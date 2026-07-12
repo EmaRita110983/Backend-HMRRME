@@ -9,11 +9,11 @@ use Illuminate\Http\Request;
 class UserController extends Controller
 {
     public function index()
-    {
-        return response()->json(
-            User::select('id', 'name', 'email')->get()
-        );
-    }
+{
+    return response()->json(
+        User::select('id', 'name', 'email', 'cedula')->get()
+    );
+}
 
     public function store(Request $request)
     {

@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
+
 class AuthController extends Controller
 {
     public function funRegister(Request $request){
@@ -13,13 +14,15 @@ class AuthController extends Controller
         $request->validate([
             "name" => "required|string",
             "email" => "required|email|unique:users",
-            "password" => "required|string|min:6"
+            "password" => "required|string|min:6",
+            "cedula" =>"required|string|unique:users,cedula",
         ]);
         // Guardar en la base de datos
         $usuario = new User();
         $usuario->name = $request->name;
         $usuario->email = $request->email;
-        $usuario->password = $request->password;
+        $usuario->password = bcrypt($request->password);
+        $usuario->cedula = $request->cedula;
         $usuario->save();
 
         return response()->json([
