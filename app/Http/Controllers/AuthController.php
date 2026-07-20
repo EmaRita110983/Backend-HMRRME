@@ -20,6 +20,7 @@ class AuthController extends Controller
             "email" => "required|email|unique:users",
             "password" => "required|string|min:6",
             "cedula" => "required|string|unique:users,cedula",
+            "role" => "nullable|in:superadmin,admin,secretaria",
         ]);
         // Guardar en la base de datos
         $usuario = new User();

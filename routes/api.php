@@ -4,15 +4,13 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
-
 use Illuminate\Support\Facades\Route;
-
-
 
 
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
+
 
 // Rutas Auth
 Route::prefix('v1/auth')->group(function () {
@@ -29,7 +27,10 @@ Route::prefix('v1/auth')->group(function () {
 
 
 // Rutas administrativas protegidas
-Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
+Route::middleware([
+    'auth:sanctum',
+    'role:superadmin'
+])->prefix('v1')->group(function () {
 
     Route::apiResource('users', UserController::class);
 

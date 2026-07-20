@@ -19,24 +19,27 @@ class UserController extends Controller
   public function store(Request $request)
   {
 
-    $request->validate([
+  
+      $request->validate([
 
-      'name' => 'required',
-      'email' => 'required|email|unique:users',
-      'password' => 'required|min:5',
-      'cedula' => 'required'
+    'name' => 'required',
+    'email' => 'required|email|unique:users',
+    'password' => 'required|min:5',
+    'cedula' => 'required',
+    'role' => 'required|in:superadmin,admin,secretaria'
 
-    ]);
+]);
 
+   
     $usuario = User::create([
 
-      'name' => $request->name,
-      'email' => $request->email,
-      'password' => Hash::make($request->password),
-      'cedula' => $request->cedula
+    'name' => $request->name,
+    'email' => $request->email,
+    'password' => Hash::make($request->password),
+    'cedula' => $request->cedula,
+    'role' => $request->role
 
-    ]);
-
+]);
     return response()->json([
 
       'message' => 'Usuario creado correctamente',
@@ -59,19 +62,21 @@ class UserController extends Controller
 
       'name' => 'required',
       'email' => 'required|email',
-      'cedula' => 'required'
-
+      'cedula' => 'required',
+      'role' => 'required|in:superadmin,admin,secretaria'
     ]);
+    
 
     $usuario = User::findOrFail($id);
 
     $usuario->update([
 
-      'name' => $request->name,
-      'email' => $request->email,
-      'cedula' => $request->cedula
+    'name' => $request->name,
+    'email' => $request->email,
+    'cedula' => $request->cedula,
+    'role' => $request->role
 
-    ]);
+]);
 
     return response()->json([
 
