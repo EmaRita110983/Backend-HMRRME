@@ -58,13 +58,14 @@ class UserController extends Controller
   public function update(Request $request, $id)
   {
 
-    $request->validate([
+   $request->validate([
 
-      'name' => 'required',
-      'email' => 'required|email',
-      'cedula' => 'required',
-      'role' => 'required|in:superadmin,admin,secretaria'
-    ]);
+    'name' => 'required',
+    'email' => 'required|email|unique:users,email,'.$id,
+    'cedula' => 'required|unique:users,cedula,'.$id,
+    'role' => 'required|in:superadmin,admin,secretaria'
+
+]);
     
 
     $usuario = User::findOrFail($id);
