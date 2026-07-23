@@ -18,7 +18,8 @@ class User extends Authenticatable
     'cedula',
     'role',
     'blocked',
-    'login_attempts'
+    'login_attempts',
+    'created_by',
 ];
 
     protected $hidden = [

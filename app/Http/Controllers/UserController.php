@@ -37,7 +37,8 @@ class UserController extends Controller
     'email' => $request->email,
     'password' => Hash::make($request->password),
     'cedula' => $request->cedula,
-    'role' => $request->role
+    'role' => $request->role,
+    'created_by' => auth()->id()
 
 ]);
     return response()->json([

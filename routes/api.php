@@ -28,12 +28,29 @@ Route::prefix('v1/auth')->group(function () {
 
 // Rutas administrativas protegidas
 Route::middleware([
-    'auth:sanctum',
-    'role:superadmin'
+    'auth:sanctum'
 ])->prefix('v1')->group(function () {
 
-    Route::apiResource('users', UserController::class);
+    // Usuarios: Superadmin y Admin
+    Route::middleware('role:superadmin,admin')->group(function () {
+
+        Route::get('users', [UserController::class, 'index']);
+        Route::post('users', [UserController::class, 'store']);
+        Route::get('users/{user}', [UserController::class, 'show']);
+        Route::put('users/{user}', [UserController::class, 'update']);
+
+    });
+
+    // Solo Superadmin
+    Route::middleware('role:superadmin,admin')->group(function () {
+
+        Route::delete('users/{user}', [UserController::class, 'destroy']);
+
+        Route::apiResource('role', RoleController::class);
+
+    });
+
+});
 
     Route::apiResource('role', RoleController::class);
 
-});
