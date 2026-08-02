@@ -102,10 +102,10 @@ class AuthController extends Controller
         ]);
     }
 
-    public function funProfile(Request $request)
-    {
-        return response()->json($request->user());
-    }
+   public function funProfile(Request $request)
+{
+    return response()->json($request->user());
+}
     public function funLogout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();

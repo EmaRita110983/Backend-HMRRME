@@ -11,35 +11,60 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-   protected $fillable = [
-    'name',
-    'email',
-    'password',
-    'cedula',
-    'role',
-    'blocked',
-    'login_attempts',
-    'created_by',
-];
+    use HasApiTokens, HasFactory, Notifiable;
+
+    protected $fillable = [
+        'name',
+        'email',
+        'password',
+        'cedula',
+        'role',
+        'admin_id',
+        'status',
+        'blocked',
+        'login_attempts',
+        'created_by',
+    ];
 
     protected $hidden = [
         'password',
         'remember_token',
     ];
-    
-    /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable;
 
     /**
      * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
      */
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'blocked' => 'boolean',
+            'status' => 'boolean',
+            'login_attempts' => 'integer',
         ];
+    }
+
+    /**
+     * Administrador al que pertenece la secretaria.
+     */
+    public function admin()
+    {
+        return $this->belongsTo(User::class, 'admin_id');
+    }
+
+    /**
+     * Secretarias pertenecientes al administrador.
+     */
+    public function secretaries()
+    {
+        return $this->hasMany(User::class, 'admin_id');
+    }
+    /**
+     * Pacientes pertenecientes al administrador.
+     */
+    public function patients()
+    {
+        return $this->hasMany(Patient::class, 'admin_id');
     }
 }
