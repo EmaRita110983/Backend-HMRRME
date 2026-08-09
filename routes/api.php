@@ -5,6 +5,9 @@ use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PatientController;
+use App\Http\Controllers\HistorialMedicoController;
+use App\Http\Controllers\RecetaController;
+use App\Http\Controllers\CitaController;
 
 
 Route::get('/user', function (Request $request) {
@@ -55,5 +58,16 @@ Route::middleware([
 
     // Pacientes
     Route::apiResource('patients', PatientController::class);
+
+    // Citas: médico, secretaria y superadmin (misma disponibilidad que pacientes)
+    Route::apiResource('citas', CitaController::class);
+
+    // Historial médico y recetas: solo Superadmin y Admin (la secretaria no accede)
+    Route::middleware('role:superadmin,admin')->group(function () {
+
+        Route::apiResource('historial', HistorialMedicoController::class);
+        Route::apiResource('recetas', RecetaController::class);
+
+    });
 
 });

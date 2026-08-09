@@ -3,15 +3,19 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Patient extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'admin_id',
         'created_by',
         'first_name',
         'last_name',
         'cedula',
+        'pasaporte',
         'birth_date',
         'phone',
         'email',
@@ -38,5 +42,20 @@ class Patient extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function historialMedico()
+    {
+        return $this->hasMany(HistorialMedico::class);
+    }
+
+    public function recetas()
+    {
+        return $this->hasMany(Receta::class);
+    }
+
+    public function citas()
+    {
+        return $this->hasMany(Cita::class);
     }
 }

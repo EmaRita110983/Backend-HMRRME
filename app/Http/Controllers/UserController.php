@@ -24,21 +24,42 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
-        if ($request->user()->role === 'admin' && $request->role !== 'secretaria') {
+        $creador = $request->user();
+
+        if ($creador->role === 'admin' && $request->role !== 'secretaria') {
             return response()->json([
                 'message' => 'Un administrador solo puede crear secretarias.'
             ], 403);
         }
 
-        $request->validate([
-
+        $rules = [
             'name' => 'required',
             'email' => 'required|email|unique:users',
             'password' => 'required|min:5',
             'cedula' => 'required',
-            'role' => 'required|in:superadmin,admin,secretaria'
-        ]);
+            'role' => 'required|in:superadmin,admin,secretaria',
+        ];
 
+        // El superadmin no tiene tenant propio: si crea una secretaria, debe
+        // indicar a qué médico pertenece (a diferencia del admin, que solo
+        // puede crear secretarias para sí mismo).
+        $superadminCreandoSecretaria = $creador->isSuperAdmin() && $request->role === 'secretaria';
+
+        if ($superadminCreandoSecretaria) {
+            $rules['admin_id'] = 'required|exists:users,id';
+        }
+
+        $request->validate($rules);
+
+        if ($superadminCreandoSecretaria) {
+            $medico = User::find($request->admin_id);
+
+            if (!$medico || $medico->role !== 'admin') {
+                return response()->json([
+                    'message' => 'El admin_id indicado no corresponde a un médico.'
+                ], 422);
+            }
+        }
 
         $usuario = User::create([
 
@@ -48,7 +69,9 @@ class UserController extends Controller
             'cedula' => $request->cedula,
             'role' => $request->role,
             'created_by' => auth()->id(),
-            'admin_id' => $request->role === 'secretaria' ? auth()->id() : null,
+            'admin_id' => $request->role === 'secretaria'
+                ? ($superadminCreandoSecretaria ? $request->admin_id : auth()->id())
+                : null,
 
         ]);
 
@@ -65,6 +88,8 @@ class UserController extends Controller
     public function show(int $id)
     {
         $usuario = User::findOrFail($id);
+
+        $this->authorize('view', $usuario);
 
         return response()->json($usuario);
     }
@@ -83,6 +108,9 @@ class UserController extends Controller
 
 
         $usuario = User::findOrFail($id);
+
+        $this->authorize('update', $usuario);
+
         if (
             $request->user()->role === 'admin' &&
             $request->role !== 'secretaria'
@@ -91,17 +119,6 @@ class UserController extends Controller
                 'message' => 'Un administrador solo puede asignar el rol de secretaria.'
             ], 403);
         }
-
-        // Admin solo puede editar usuarios creados por él
-        if (
-            $request->user()->role === 'admin' &&
-            $usuario->created_by != auth()->id()
-        ) {
-            return response()->json([
-                'message' => 'No tiene permiso para editar este usuario.'
-            ], 403);
-        }
-
 
         $usuario->update([
 
@@ -125,15 +142,7 @@ class UserController extends Controller
     {
         $usuario = User::findOrFail($id);
 
-        // Admin solo puede modificar usuarios creados por él
-        if (
-            $request->user()->role === 'admin' &&
-            $usuario->created_by != $request->user()->id
-        ) {
-            return response()->json([
-                'message' => 'No tiene permiso para modificar este usuario.'
-            ], 403);
-        }
+        $this->authorize('update', $usuario);
 
         $usuario->update([
             'status' => !$usuario->status
@@ -152,26 +161,15 @@ class UserController extends Controller
     {
         $usuario = User::findOrFail($id);
 
+        $this->authorize('delete', $usuario);
 
-        // Admin solo puede eliminar usuarios creados por él
-        if (
-            $request->user()->role === 'admin' &&
-            $usuario->created_by != $request->user()->id
-        ) {
-            return response()->json([
-                'message' => 'No tiene permiso para editar este usuario.'
-            ], 403);
-        }
-
-        $usuario->update([
-            'status' => false
-        ]);
-
+        // Soft delete: el registro se conserva para que el médico siga viendo
+        // todo lo que esta secretaria creó/editó, aunque ya no pueda ingresar.
+        $usuario->update(['status' => false]);
+        $usuario->delete();
 
         return response()->json([
-
             'message' => 'Usuario eliminado'
-
         ]);
     }
 }

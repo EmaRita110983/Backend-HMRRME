@@ -37,33 +37,128 @@ class PatientController extends Controller
 }
     /**
      * Store a newly created resource in storage.
+     * Médico y secretaria pueden crear pacientes (para su propio tenant).
      */
     public function store(Request $request)
     {
-        //
+        $this->authorize('create', Patient::class);
+
+        $user = $request->user();
+
+        $rules = [
+            'first_name' => 'required|string',
+            'last_name' => 'required|string',
+            'cedula' => 'nullable|string',
+            'pasaporte' => 'nullable|string',
+            'birth_date' => 'nullable|date',
+            'phone' => 'nullable|string',
+            'email' => 'nullable|email',
+            'address' => 'nullable|string',
+            'insurance' => 'nullable|string',
+            'emergency_contact' => 'nullable|string',
+            'emergency_phone' => 'nullable|string',
+            'medical_conditions' => 'nullable|string',
+        ];
+
+        // El superadmin no tiene tenant propio: debe indicar a qué médico
+        // pertenece el paciente que está creando.
+        if ($user->isSuperAdmin()) {
+            $rules['admin_id'] = 'required|exists:users,id';
+        }
+
+        $request->validate($rules);
+
+        $patient = Patient::create([
+            ...$request->only([
+                'first_name',
+                'last_name',
+                'cedula',
+                'pasaporte',
+                'birth_date',
+                'phone',
+                'email',
+                'address',
+                'insurance',
+                'emergency_contact',
+                'emergency_phone',
+                'medical_conditions',
+            ]),
+            'admin_id' => $user->isDoctor() ? $user->id : ($user->isSuperAdmin() ? $request->admin_id : $user->admin_id),
+            'created_by' => $user->id,
+        ]);
+
+        return response()->json([
+            'message' => 'Paciente creado correctamente',
+            'patient' => $patient,
+        ], 201);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(Patient $patient)
     {
-        //
+        $this->authorize('view', $patient);
+
+        return response()->json($patient);
     }
 
     /**
      * Update the specified resource in storage.
+     * Médico y secretaria pueden editar, mientras el paciente sea de su tenant.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, Patient $patient)
     {
-        //
+        $this->authorize('update', $patient);
+
+        $request->validate([
+            'first_name' => 'required|string',
+            'last_name' => 'required|string',
+            'cedula' => 'nullable|string',
+            'pasaporte' => 'nullable|string',
+            'birth_date' => 'nullable|date',
+            'phone' => 'nullable|string',
+            'email' => 'nullable|email',
+            'address' => 'nullable|string',
+            'insurance' => 'nullable|string',
+            'emergency_contact' => 'nullable|string',
+            'emergency_phone' => 'nullable|string',
+            'medical_conditions' => 'nullable|string',
+        ]);
+
+        $patient->update($request->only([
+            'first_name',
+            'last_name',
+            'cedula',
+            'pasaporte',
+            'birth_date',
+            'phone',
+            'email',
+            'address',
+            'insurance',
+            'emergency_contact',
+            'emergency_phone',
+            'medical_conditions',
+        ]));
+
+        return response()->json([
+            'message' => 'Paciente actualizado',
+            'patient' => $patient,
+        ]);
     }
 
     /**
      * Remove the specified resource from storage.
+     * Solo el médico puede eliminar, y siempre como soft delete (la secretaria nunca borra).
      */
-    public function destroy(string $id)
+    public function destroy(Patient $patient)
     {
-        //
+        $this->authorize('delete', $patient);
+
+        $patient->delete();
+
+        return response()->json([
+            'message' => 'Paciente eliminado',
+        ]);
     }
 }
