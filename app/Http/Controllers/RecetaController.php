@@ -42,6 +42,7 @@ class RecetaController extends Controller
             'patient_id' => 'required|exists:patients,id',
             'historial_medico_id' => 'nullable|exists:historial_medico,id',
             'fecha_emision' => 'required|date',
+            'ars' => 'nullable|string|max:255',
             'medicamentos' => 'required|string',
             'indicaciones' => 'nullable|string',
         ]);
@@ -66,6 +67,7 @@ class RecetaController extends Controller
                 'patient_id',
                 'historial_medico_id',
                 'fecha_emision',
+                'ars',
                 'medicamentos',
                 'indicaciones',
             ]),
@@ -92,12 +94,14 @@ class RecetaController extends Controller
 
         $request->validate([
             'fecha_emision' => 'required|date',
+            'ars' => 'nullable|string|max:255',
             'medicamentos' => 'required|string',
             'indicaciones' => 'nullable|string',
         ]);
 
         $receta->update($request->only([
             'fecha_emision',
+            'ars',
             'medicamentos',
             'indicaciones',
         ]));

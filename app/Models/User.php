@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -25,6 +26,14 @@ class User extends Authenticatable
         'blocked',
         'login_attempts',
         'created_by',
+        'brand_name',
+        'brand_color',
+        'brand_color_secondary',
+        'logo_path',
+        'header_icon_left_path',
+        'header_icon_right_path',
+        'header_credentials',
+        'licencia_declaracion',
     ];
 
     protected $hidden = [
@@ -67,6 +76,39 @@ class User extends Authenticatable
     public function patients()
     {
         return $this->hasMany(Patient::class, 'admin_id');
+    }
+
+    /**
+     * El médico dueño del branding (logo/nombre/color) que este usuario debe
+     * ver: él mismo si es admin, su médico si es secretaria, o null si es
+     * superadmin (no pertenece a ningún tenant).
+     */
+    public function tenant(): ?User
+    {
+        if ($this->isDoctor()) {
+            return $this;
+        }
+
+        if ($this->isSecretary()) {
+            return $this->admin;
+        }
+
+        return null;
+    }
+
+    public function getLogoUrlAttribute(): ?string
+    {
+        return $this->logo_path ? Storage::disk('public')->url($this->logo_path) : null;
+    }
+
+    public function getHeaderIconLeftUrlAttribute(): ?string
+    {
+        return $this->header_icon_left_path ? Storage::disk('public')->url($this->header_icon_left_path) : null;
+    }
+
+    public function getHeaderIconRightUrlAttribute(): ?string
+    {
+        return $this->header_icon_right_path ? Storage::disk('public')->url($this->header_icon_right_path) : null;
     }
 
     public function isSuperAdmin(): bool

@@ -5,36 +5,32 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Receta extends Model
+class LicenciaMedica extends Model
 {
     use SoftDeletes;
 
+    protected $table = 'licencias_medicas';
+
     protected $fillable = [
         'patient_id',
-        'historial_medico_id',
         'admin_id',
         'created_by',
-        'fecha_emision',
-        'ars',
-        'medicamentos',
-        'indicaciones',
+        'fecha',
+        'constatado',
+        'recomendacion',
+        'certificacion_cierre',
     ];
 
     protected function casts(): array
     {
         return [
-            'fecha_emision' => 'date',
+            'fecha' => 'date',
         ];
     }
 
     public function patient()
     {
         return $this->belongsTo(Patient::class);
-    }
-
-    public function historial()
-    {
-        return $this->belongsTo(HistorialMedico::class, 'historial_medico_id');
     }
 
     /**
@@ -46,7 +42,7 @@ class Receta extends Model
     }
 
     /**
-     * Quién emitió la receta (médico o superadmin).
+     * Quién registró esta licencia (médico o superadmin).
      */
     public function creator()
     {

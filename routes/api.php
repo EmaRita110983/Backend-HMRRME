@@ -8,6 +8,10 @@ use App\Http\Controllers\PatientController;
 use App\Http\Controllers\HistorialMedicoController;
 use App\Http\Controllers\RecetaController;
 use App\Http\Controllers\CitaController;
+use App\Http\Controllers\BrandingController;
+use App\Http\Controllers\AutorizacionProcedimientoController;
+use App\Http\Controllers\LicenciaMedicaController;
+use App\Http\Controllers\DietaController;
 
 
 Route::get('/user', function (Request $request) {
@@ -44,6 +48,11 @@ Route::middleware([
 ])->prefix('v1')->group(function () {
 
 
+    // Branding del tenant: cualquiera autenticado puede consultar el suyo
+    // (para pintar logo/nombre/color en el topbar).
+    Route::get('branding', [BrandingController::class, 'show']);
+
+
     // Usuarios: solo Superadmin y Admin
     Route::middleware('role:superadmin,admin')->group(function () {
 
@@ -52,6 +61,21 @@ Route::middleware([
         Route::get('users/{user}', [UserController::class, 'show']);
         Route::put('users/{user}', [UserController::class, 'update']);
         Route::put('users/{user}/status', [UserController::class, 'toggleStatus']);
+        Route::delete('users/{user}', [UserController::class, 'destroy']);
+
+    });
+
+
+    // Branding de un médico puntual: solo el Superadmin lo gestiona, desde
+    // la pantalla de Usuarios, relacionando la cuenta del médico por id.
+    // El admin (médico) ya no puede editar su propio branding.
+    Route::middleware('role:superadmin')->group(function () {
+
+        Route::get('users/{user}/branding', [BrandingController::class, 'showForUser']);
+        Route::put('users/{user}/branding', [BrandingController::class, 'updateForUser']);
+        Route::post('users/{user}/branding/logo', [BrandingController::class, 'uploadLogoForUser']);
+        Route::post('users/{user}/branding/header-icon-left', [BrandingController::class, 'uploadHeaderIconLeftForUser']);
+        Route::post('users/{user}/branding/header-icon-right', [BrandingController::class, 'uploadHeaderIconRightForUser']);
 
     });
 
@@ -62,11 +86,19 @@ Route::middleware([
     // Citas: médico, secretaria y superadmin (misma disponibilidad que pacientes)
     Route::apiResource('citas', CitaController::class);
 
-    // Historial médico y recetas: solo Superadmin y Admin (la secretaria no accede)
+    // Historial médico, recetas y autorizaciones: solo Superadmin y Admin (la secretaria no accede)
     Route::middleware('role:superadmin,admin')->group(function () {
 
         Route::apiResource('historial', HistorialMedicoController::class);
         Route::apiResource('recetas', RecetaController::class);
+        // Laravel singulariza "autorizaciones" mal por defecto (da "autorizacione",
+        // no "autorizacion"), lo que rompe el route-model-binding: el parámetro de
+        // ruta no coincide con el nombre del argumento del controlador y el modelo
+        // nunca se resuelve desde la BD, causando un 403 falso al editar/eliminar.
+        Route::apiResource('autorizaciones', AutorizacionProcedimientoController::class)
+            ->parameters(['autorizaciones' => 'autorizacion']);
+        Route::apiResource('licencias', LicenciaMedicaController::class);
+        Route::apiResource('dietas', DietaController::class);
 
     });
 
