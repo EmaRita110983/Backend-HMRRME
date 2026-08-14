@@ -25,7 +25,6 @@ Route::prefix('v1/auth')->group(function () {
     
 
     // Públicas
-    Route::post('register', [AuthController::class, 'funRegister']);
     Route::post('login', [AuthController::class, 'funLogin']);
 
     // Protegidas
@@ -33,6 +32,13 @@ Route::prefix('v1/auth')->group(function () {
 
         Route::get('profile', [AuthController::class, 'funProfile']);
         Route::post('logout', [AuthController::class, 'funLogout']);
+
+        // El frontend no usa este registro directo (los usuarios se crean
+        // desde Gestión de Usuarios, ver UserController::store): quedaba
+        // público y sin invitación, así que cualquiera sin autenticar podía
+        // crear una cuenta real en el sistema. Se restringe a Superadmin,
+        // consistente con el resto del flujo de creación de usuarios.
+        Route::middleware('role:superadmin')->post('register', [AuthController::class, 'funRegister']);
 
     });
 

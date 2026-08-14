@@ -88,7 +88,10 @@ class BrandingController extends Controller
         $medico = $this->resolveMedico($id);
 
         $request->validate([
-            'logo' => 'required|image|mimes:jpg,jpeg,png,svg|max:2048',
+            // Sin svg a propósito: un SVG puede llevar <script> incrustado y
+            // se ejecutaría si alguien lo abre directamente en una pestaña
+            // (dentro de la app siempre se muestra vía <img>, que sí es seguro).
+            'logo' => 'required|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
         $this->replaceImage($medico, 'logo_path', $request->file('logo'));
@@ -107,7 +110,7 @@ class BrandingController extends Controller
         $medico = $this->resolveMedico($id);
 
         $request->validate([
-            'icon' => 'required|image|mimes:jpg,jpeg,png,svg|max:2048',
+            'icon' => 'required|image|mimes:jpg,jpeg,png|max:2048', // sin svg, ver nota en logo arriba
         ]);
 
         $this->replaceImage($medico, 'header_icon_left_path', $request->file('icon'));
@@ -126,7 +129,7 @@ class BrandingController extends Controller
         $medico = $this->resolveMedico($id);
 
         $request->validate([
-            'icon' => 'required|image|mimes:jpg,jpeg,png,svg|max:2048',
+            'icon' => 'required|image|mimes:jpg,jpeg,png|max:2048', // sin svg, ver nota en logo arriba
         ]);
 
         $this->replaceImage($medico, 'header_icon_right_path', $request->file('icon'));

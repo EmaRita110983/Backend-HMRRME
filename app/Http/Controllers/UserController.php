@@ -35,7 +35,7 @@ class UserController extends Controller
         $rules = [
             'name' => 'required',
             'email' => 'required|email|unique:users',
-            'password' => 'required|min:5',
+            'password' => 'required|min:8',
             'cedula' => 'required',
             'role' => 'required|in:superadmin,admin,secretaria',
         ];
@@ -147,6 +147,13 @@ class UserController extends Controller
         $usuario->update([
             'status' => !$usuario->status
         ]);
+
+        // Al desactivar, además de bloquear el próximo login (ver funLogin),
+        // se revocan los tokens ya emitidos para que una sesión abierta en
+        // ese momento pierda el acceso de inmediato, no solo en el futuro.
+        if (!$usuario->status) {
+            $usuario->tokens()->delete();
+        }
 
         return response()->json([
             'message' => $usuario->status

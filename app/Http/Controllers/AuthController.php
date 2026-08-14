@@ -18,7 +18,7 @@ class AuthController extends Controller
         $request->validate([
             "name" => "required|string",
             "email" => "required|email|unique:users",
-            "password" => "required|string|min:6",
+            "password" => "required|string|min:8",
             "cedula" => "required|string|unique:users,cedula",
             "role" => "nullable|in:superadmin,admin,secretaria",
         ]);
@@ -86,11 +86,21 @@ class AuthController extends Controller
         }
 
 
+        $user = Auth::user();
+
+        // Credenciales correctas pero cuenta desactivada (ver toggleStatus en
+        // UserController): sin este chequeo, "Desactivar" no tenía ningún
+        // efecto real y el usuario podía seguir iniciando sesión con normalidad.
+        if (!$user->status) {
+            Auth::logout();
+
+            return response()->json([
+                "message" => "Esta cuenta está desactivada. Contacte al administrador."
+            ], 403);
+        }
+
         // Login correcto: limpiar intentos
         RateLimiter::clear($key);
-
-
-        $user = Auth::user();
 
         $token = $user->createToken("api-token")->plainTextToken;
 
