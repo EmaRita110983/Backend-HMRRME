@@ -32,7 +32,10 @@ class BrandingController extends Controller
     /**
      * Solo el Superadmin edita el branding, y siempre relacionándolo con la
      * cuenta del médico (admin) a la que pertenece: el médico ya no puede
-     * cambiar su propio nombre/color/credenciales.
+     * cambiar su propio nombre/credenciales. El color queda fuera de aquí
+     * a propósito: el médico lo elige él mismo desde la paleta de colores
+     * de la app (ver updateOwnColor más abajo), el Superadmin no asigna
+     * colores por él.
      */
     public function updateForUser(Request $request, int $id)
     {
@@ -40,22 +43,42 @@ class BrandingController extends Controller
 
         $request->validate([
             'brand_name' => 'nullable|string|max:255',
-            'brand_color' => 'nullable|regex:/^#[0-9A-Fa-f]{6}$/',
-            'brand_color_secondary' => 'nullable|regex:/^#[0-9A-Fa-f]{6}$/',
             'header_credentials' => 'nullable|string|max:1000',
             'licencia_declaracion' => 'nullable|string|max:1000',
         ]);
 
         $medico->update([
             'brand_name' => $request->brand_name,
-            'brand_color' => $request->brand_color,
-            'brand_color_secondary' => $request->brand_color_secondary,
             'header_credentials' => $request->header_credentials,
             'licencia_declaracion' => $request->licencia_declaracion,
         ]);
 
         return response()->json([
             'message' => 'Branding actualizado',
+            ...$this->brandingPayload($medico),
+        ]);
+    }
+
+    /**
+     * El propio médico (admin) elige su color principal desde la paleta de
+     * colores de la app (panel de configuración, arriba a la derecha) —
+     * es la única vía para fijar brand_color; el Superadmin ya no lo hace
+     * por él (ver updateForUser).
+     */
+    public function updateOwnColor(Request $request)
+    {
+        $request->validate([
+            'brand_color' => 'required|regex:/^#[0-9A-Fa-f]{6}$/',
+        ]);
+
+        $medico = $request->user();
+
+        $medico->update([
+            'brand_color' => $request->brand_color,
+        ]);
+
+        return response()->json([
+            'message' => 'Color actualizado',
             ...$this->brandingPayload($medico),
         ]);
     }

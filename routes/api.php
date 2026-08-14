@@ -52,6 +52,11 @@ Route::middleware([
     // (para pintar logo/nombre/color en el topbar).
     Route::get('branding', [BrandingController::class, 'show']);
 
+    // El médico (admin) fija su propio color principal desde la paleta de
+    // colores de la app — es la única vía para asignar brand_color; el
+    // Superadmin ya no lo hace por él (ver updateForUser más abajo).
+    Route::middleware('role:admin')->put('branding/color', [BrandingController::class, 'updateOwnColor']);
+
 
     // Usuarios: solo Superadmin y Admin
     Route::middleware('role:superadmin,admin')->group(function () {
