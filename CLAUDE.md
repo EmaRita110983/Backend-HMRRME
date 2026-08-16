@@ -1,6 +1,6 @@
 # Backend — SaaS Médico Multi-tenant
 
-API REST en Laravel 13 (PHP 8.3) que sirve de backend a un sistema de gestión para clínicas/consultorios médicos. El frontend vive en un repo separado: `/Users/howard/Desktop/Curso_Sakai/sakai-vue` (Vue 3 + PrimeVue, template Sakai).
+API REST en Laravel 13 (PHP 8.3) que sirve de backend a un sistema de gestión para clínicas/consultorios médicos. El frontend vive en un repo separado: `/Users/howard/Desktop/proyecto 1/sakai-vue` (Vue 3 + PrimeVue, template Sakai).
 
 ## Modelo de negocio (multi-tenant)
 
@@ -47,6 +47,7 @@ Todas las imágenes de branding se guardan en el disco `public` (`storage/app/pu
 - Migraciones van agregando columnas incrementalmente sobre `users`/`patients` (varios `add_*_to_*_table`) en vez de rehacer la tabla — seguir ese patrón al modificar el esquema.
 - `Route::apiResource('autorizaciones', ...)` necesita `->parameters(['autorizaciones' => 'autorizacion'])`: Laravel singulariza mal "autorizaciones" por defecto (da "autorizacione"), lo que rompe el route-model-binding contra el parámetro `$autorizacion` del controlador — el modelo nunca se resolvía desde la BD y la policy rechazaba la petición como si fuera un registro vacío (403 falso al editar/eliminar). Revisar `php artisan route:list` si se agrega otro recurso con un nombre plural poco común en español.
 - Hay una env var `SUPERADMIN_CAN_DELETE` que sugiere un flag de negocio para permitir o no borrado físico/lógico por el superadmin — revisar su uso antes de tocar borrado de usuarios.
+- Modelos con nombre compuesto en español (`HistorialMedico`, `LicenciaMedica`, `EstudioMedico`) necesitan `protected $table = '...'` explícito: Eloquent adivina el nombre de tabla pluralizando solo la última palabra del nombre de la clase (ej. `EstudioMedico` → `estudio_medicos`), pero las migraciones de este proyecto usan el plural natural en español con la primera palabra pluralizada (`estudios_medicos`, `licencias_medicas`). Sin el `$table` explícito, Eloquent apunta a una tabla que no existe ("no such table") en cuanto se intenta el primer insert/select.
 
 ## Preferencias del usuario (Howard)
 

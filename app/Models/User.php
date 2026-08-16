@@ -23,6 +23,7 @@ class User extends Authenticatable
         'role',
         'admin_id',
         'status',
+        'must_change_password',
         'blocked',
         'login_attempts',
         'created_by',
@@ -51,6 +52,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'blocked' => 'boolean',
             'status' => 'boolean',
+            'must_change_password' => 'boolean',
             'login_attempts' => 'integer',
         ];
     }

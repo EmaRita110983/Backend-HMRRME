@@ -12,6 +12,7 @@ use App\Http\Controllers\BrandingController;
 use App\Http\Controllers\AutorizacionProcedimientoController;
 use App\Http\Controllers\LicenciaMedicaController;
 use App\Http\Controllers\DietaController;
+use App\Http\Controllers\EstudioMedicoController;
 
 
 Route::get('/user', function (Request $request) {
@@ -32,6 +33,7 @@ Route::prefix('v1/auth')->group(function () {
 
         Route::get('profile', [AuthController::class, 'funProfile']);
         Route::post('logout', [AuthController::class, 'funLogout']);
+        Route::put('change-password', [AuthController::class, 'funCambiarPassword']);
 
         // El frontend no usa este registro directo (los usuarios se crean
         // desde Gestión de Usuarios, ver UserController::store): quedaba
@@ -50,7 +52,8 @@ Route::prefix('v1/auth')->group(function () {
 
 // Rutas administrativas protegidas
 Route::middleware([
-    'auth:sanctum'
+    'auth:sanctum',
+    'credentials.changed'
 ])->prefix('v1')->group(function () {
 
 
@@ -69,6 +72,8 @@ Route::middleware([
 
         Route::get('users', [UserController::class, 'index']);
         Route::post('users', [UserController::class, 'store']);
+        // Antes de users/{user}: si no, "eliminados" se interpretaría como un id.
+        Route::get('users/eliminados/buscar', [UserController::class, 'buscarEliminado']);
         Route::get('users/{user}', [UserController::class, 'show']);
         Route::put('users/{user}', [UserController::class, 'update']);
         Route::put('users/{user}/status', [UserController::class, 'toggleStatus']);
@@ -92,6 +97,9 @@ Route::middleware([
 
 
     // Pacientes
+    // Antes del apiResource: si no, "eliminados" se interpretaría como un id
+    // de paciente (GET patients/{patient}).
+    Route::get('patients/eliminados/buscar', [PatientController::class, 'buscarEliminado']);
     Route::apiResource('patients', PatientController::class);
 
     // Citas: médico, secretaria y superadmin (misma disponibilidad que pacientes)
@@ -110,6 +118,7 @@ Route::middleware([
             ->parameters(['autorizaciones' => 'autorizacion']);
         Route::apiResource('licencias', LicenciaMedicaController::class);
         Route::apiResource('dietas', DietaController::class);
+        Route::apiResource('estudios', EstudioMedicoController::class);
 
     });
 

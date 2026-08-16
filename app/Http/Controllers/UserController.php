@@ -21,6 +21,41 @@ class UserController extends Controller
         );
     }
 
+    /**
+     * Busca, por cédula, un usuario (médico o secretaria) eliminado (soft
+     * delete). Se usa cuando la búsqueda normal (solo usuarios activos) no
+     * encuentra nada, para poder consultar sus datos aunque ya no aparezca en
+     * el listado — de solo lectura, no se reactiva (ver UserPolicy::restore(),
+     * siempre false).
+     */
+    public function buscarEliminado(Request $request)
+    {
+        $creador = $request->user();
+        $documento = trim((string) $request->query('documento', ''));
+
+        if ($documento === '') {
+            return response()->json([
+                'message' => 'Debe indicar una cédula'
+            ], 422);
+        }
+
+        $query = User::onlyTrashed()->where('cedula', $documento);
+
+        if (!$creador->isSuperAdmin()) {
+            $query->where('created_by', $creador->id);
+        }
+
+        $usuario = $query->first();
+
+        if (!$usuario) {
+            return response()->json([
+                'message' => 'No se encontró ningún usuario eliminado con esa cédula'
+            ], 404);
+        }
+
+        return response()->json($usuario);
+    }
+
 
     public function store(Request $request)
     {
@@ -32,10 +67,15 @@ class UserController extends Controller
             ], 403);
         }
 
+        // Un médico (role=admin) se crea con la password genérica de
+        // DEFAULT_ADMIN_PASSWORD (ver abajo), no con una que escriba el
+        // superadmin: por eso acá no es obligatoria.
+        $creandoMedico = $request->role === 'admin';
+
         $rules = [
             'name' => 'required',
             'email' => 'required|email|unique:users',
-            'password' => 'required|min:8',
+            'password' => $creandoMedico ? 'nullable' : 'required|min:8',
             'cedula' => 'required',
             'role' => 'required|in:superadmin,admin,secretaria',
         ];
@@ -65,13 +105,14 @@ class UserController extends Controller
 
             'name' => $request->name,
             'email' => $request->email,
-            'password' => Hash::make($request->password),
+            'password' => Hash::make($creandoMedico ? env('DEFAULT_ADMIN_PASSWORD', 'Cambiar123') : $request->password),
             'cedula' => $request->cedula,
             'role' => $request->role,
             'created_by' => auth()->id(),
             'admin_id' => $request->role === 'secretaria'
                 ? ($superadminCreandoSecretaria ? $request->admin_id : auth()->id())
                 : null,
+            'must_change_password' => $creandoMedico,
 
         ]);
 
@@ -79,7 +120,11 @@ class UserController extends Controller
         return response()->json([
 
             'message' => 'Usuario creado correctamente',
-            'usuario' => $usuario
+            'usuario' => $usuario,
+            // Para que el superadmin pueda copiar y entregarle la contraseña
+            // genérica al médico en el momento (ver Usuarios.vue): solo va en
+            // texto plano acá, nunca se guarda así en la base de datos.
+            'password_generica' => $creandoMedico ? env('DEFAULT_ADMIN_PASSWORD', 'Cambiar123') : null
 
         ], 201);
     }

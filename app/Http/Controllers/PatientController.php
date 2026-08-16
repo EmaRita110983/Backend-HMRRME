@@ -94,11 +94,58 @@ class PatientController extends Controller
     }
 
     /**
-     * Display the specified resource.
+     * Display the specified resource. withTrashed a propósito: un paciente
+     * eliminado se sigue pudiendo consultar (ver su ficha e historial), solo
+     * que de solo lectura — ver buscarEliminado() y PatientPolicy::restore()
+     * (siempre false, no se puede reactivar desde acá).
      */
-    public function show(Patient $patient)
+    public function show(int $id)
     {
+        $patient = Patient::withTrashed()->findOrFail($id);
+
         $this->authorize('view', $patient);
+
+        return response()->json($patient);
+    }
+
+    /**
+     * Busca, por cédula o pasaporte, un paciente eliminado (soft delete) del
+     * propio tenant. Se usa cuando la búsqueda normal (solo pacientes activos)
+     * no encuentra nada, para poder consultar su ficha e historial completo
+     * aunque ya no aparezca en el listado — de solo lectura, no se reactiva.
+     */
+    public function buscarEliminado(Request $request)
+    {
+        $user = $request->user();
+        $documento = trim((string) $request->query('documento', ''));
+
+        if ($documento === '') {
+            return response()->json([
+                'message' => 'Debe indicar una cédula o pasaporte'
+            ], 422);
+        }
+
+        $query = Patient::onlyTrashed()->where(function ($q) use ($documento) {
+            $q->where('cedula', $documento)->orWhere('pasaporte', $documento);
+        });
+
+        if ($user->role === 'admin') {
+            $query->where('admin_id', $user->id);
+        } elseif ($user->role === 'secretaria') {
+            $query->where('admin_id', $user->admin_id);
+        } elseif ($user->role !== 'superadmin') {
+            return response()->json([
+                'message' => 'No autorizado'
+            ], 403);
+        }
+
+        $patient = $query->first();
+
+        if (!$patient) {
+            return response()->json([
+                'message' => 'No se encontró ningún paciente eliminado con ese documento'
+            ], 404);
+        }
 
         return response()->json($patient);
     }

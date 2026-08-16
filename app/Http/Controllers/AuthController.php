@@ -95,7 +95,7 @@ class AuthController extends Controller
             Auth::logout();
 
             return response()->json([
-                "message" => "Esta cuenta está desactivada. Contacte al administrador."
+                "message" => "Usuario inactivo"
             ], 403);
         }
 
@@ -116,6 +116,28 @@ class AuthController extends Controller
 {
     return response()->json($request->user());
 }
+
+    // Cambio de password obligatorio en el primer login de un médico creado
+    // con la password genérica (ver UserController::store y middleware
+    // EnsureCredentialsChanged). También puede usarse fuera de ese flujo:
+    // no se limita a must_change_password=true.
+    public function funCambiarPassword(Request $request)
+    {
+        $request->validate([
+            "password" => "required|string|min:8|confirmed",
+        ]);
+
+        $user = $request->user();
+        $user->password = bcrypt($request->password);
+        $user->must_change_password = false;
+        $user->save();
+
+        return response()->json([
+            "message" => "Contraseña actualizada correctamente",
+            "user" => $user
+        ]);
+    }
+
     public function funLogout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
