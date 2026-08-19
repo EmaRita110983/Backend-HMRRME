@@ -57,12 +57,14 @@ class PatientPolicy
 
     /**
      * Determine whether the user can update the model.
-     * Médico, secretaria y superadmin pueden editar, siempre que el paciente
-     * pertenezca a su tenant (superadmin ve/edita todos los tenants).
+     * Médico y superadmin pueden editar, siempre que el paciente pertenezca a
+     * su tenant (superadmin ve/edita todos los tenants). La secretaria puede
+     * crear pacientes (create(), para el flujo de Nueva cita) pero no
+     * editarlos: no tiene acceso a la pantalla de Pacientes.
      */
     public function update(User $user, Patient $patient): bool
     {
-        return ($user->isSuperAdmin() || $user->isDoctor() || $user->isSecretary()) && $this->belongsToTenant($user, $patient);
+        return ($user->isSuperAdmin() || $user->isDoctor()) && $this->belongsToTenant($user, $patient);
     }
 
     /**

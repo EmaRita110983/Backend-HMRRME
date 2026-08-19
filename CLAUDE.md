@@ -8,7 +8,7 @@ Cada **médico/administrador** (`role = admin`) es un tenant. Los datos de cada 
 
 - `superadmin`: rol global, ve/gestiona todo.
 - `admin`: el médico dueño del tenant. Tiene sus propias secretarias y pacientes.
-- `secretaria`: pertenece a un `admin` (`admin_id` en `users`), gestiona pacientes y citas de ese médico pero **no** accede a historial médico ni recetas.
+- `secretaria`: pertenece a un `admin` (`admin_id` en `users`). Su alcance real es acotado: **solo ve y crea citas** de ese médico (no las edita/reprograma/marca como atendidas ni las elimina — `CitaPolicy::update()`/`delete()` la excluyen), y **no** accede a Pacientes como pantalla propia ni a historial médico/recetas. La única forma en que toca datos de Pacientes es de forma incidental, dentro del propio flujo de "Nueva cita" (buscar uno existente o crear uno nuevo ahí mismo sin pasar por la gestión de Pacientes) — por eso `PatientPolicy::create()`/`viewAny()` siguen permitiéndole crear/listar pacientes, pero `update()` no.
 
 La autenticación usa **Laravel Sanctum** (tokens, no sesiones SPA cookie). Los roles se aplican vía el middleware `App\Http\Middleware\RoleMiddleware` (alias `role:superadmin,admin`, etc.) sobre grupos de rutas en `routes/api.php`.
 
@@ -37,8 +37,8 @@ Todas las imágenes de branding se guardan en el disco `public` (`storage/app/pu
 
 - `POST /api/v1/auth/register`, `POST /api/v1/auth/login` — públicas.
 - `GET /api/v1/auth/profile`, `POST /api/v1/auth/logout` — protegidas por `auth:sanctum`.
-- `GET/POST/PUT /api/v1/users...` — solo `superadmin,admin`.
-- `apiResource('patients', ...)`, `apiResource('citas', ...)` — accesibles a médico, secretaria y superadmin.
+- `GET/POST/PUT /api/v1/users...` — solo `superadmin,admin`. Incluye `PUT /api/v1/users/{id}/restore` (`UserController::restore()`) para reactivar (deshacer soft delete + `status=true`) un usuario eliminado encontrado antes con `users/eliminados/buscar`; mismo criterio de permiso que `destroy()` (`UserPolicy::owns()`, ver abajo).
+- `apiResource('patients', ...)`, `apiResource('citas', ...)` — accesibles a médico, secretaria y superadmin, pero con permisos distintos por verbo dentro de cada uno (ver `PatientPolicy`/`CitaPolicy`): la secretaria solo tiene `create`/`view`/`viewAny`, nunca `update`/`delete`.
 - `apiResource('historial', ...)`, `apiResource('recetas', ...)`, `apiResource('dietas', ...)`, `apiResource('autorizaciones', ...)`, `apiResource('licencias', ...)` — solo `superadmin,admin` (secretaria excluida).
 
 ## Convenciones observadas
@@ -48,6 +48,7 @@ Todas las imágenes de branding se guardan en el disco `public` (`storage/app/pu
 - `Route::apiResource('autorizaciones', ...)` necesita `->parameters(['autorizaciones' => 'autorizacion'])`: Laravel singulariza mal "autorizaciones" por defecto (da "autorizacione"), lo que rompe el route-model-binding contra el parámetro `$autorizacion` del controlador — el modelo nunca se resolvía desde la BD y la policy rechazaba la petición como si fuera un registro vacío (403 falso al editar/eliminar). Revisar `php artisan route:list` si se agrega otro recurso con un nombre plural poco común en español.
 - Hay una env var `SUPERADMIN_CAN_DELETE` que sugiere un flag de negocio para permitir o no borrado físico/lógico por el superadmin — revisar su uso antes de tocar borrado de usuarios.
 - Modelos con nombre compuesto en español (`HistorialMedico`, `LicenciaMedica`, `EstudioMedico`) necesitan `protected $table = '...'` explícito: Eloquent adivina el nombre de tabla pluralizando solo la última palabra del nombre de la clase (ej. `EstudioMedico` → `estudio_medicos`), pero las migraciones de este proyecto usan el plural natural en español con la primera palabra pluralizada (`estudios_medicos`, `licencias_medicas`). Sin el `$table` explícito, Eloquent apunta a una tabla que no existe ("no such table") en cuanto se intenta el primer insert/select.
+- En `User`, `admin_id` (no `created_by`) es la relación real de pertenencia de una secretaria a su médico (`User::secretaries()` es `hasMany(User::class, 'admin_id')`). `created_by` solo registra quién ejecutó el alta y puede ser el superadmin cuando crea una secretaria en nombre de un médico — en ese caso ambos campos difieren. Cualquier query/policy que deba responder "¿esta secretaria es mía?" (listados, búsqueda de eliminados, `UserPolicy::owns()`) tiene que filtrar por `admin_id`; usar `created_by` ahí deja fuera a las secretarias que no creó el propio médico (síntoma típico: el médico no encuentra/edita a una secretaria suya que sí existe).
 
 ## Preferencias del usuario (Howard)
 

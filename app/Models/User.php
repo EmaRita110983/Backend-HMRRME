@@ -28,6 +28,7 @@ class User extends Authenticatable
         'login_attempts',
         'created_by',
         'brand_name',
+        'professional_title',
         'brand_color',
         'brand_color_secondary',
         'logo_path',

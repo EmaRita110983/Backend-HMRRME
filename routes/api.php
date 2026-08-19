@@ -77,6 +77,7 @@ Route::middleware([
         Route::get('users/{user}', [UserController::class, 'show']);
         Route::put('users/{user}', [UserController::class, 'update']);
         Route::put('users/{user}/status', [UserController::class, 'toggleStatus']);
+        Route::put('users/{id}/restore', [UserController::class, 'restore']);
         Route::delete('users/{user}', [UserController::class, 'destroy']);
 
     });
@@ -123,3 +124,15 @@ Route::middleware([
     });
 
 });
+
+// Descarga de estudios médicos: por URL firmada de corta duración (ver
+// EstudioMedico::getArchivoUrlAttribute), no por auth:sanctum. El archivo
+// vive en el disco privado y el frontend abre esta URL directamente en una
+// pestaña nueva (window.open), que no puede enviar el header Authorization
+// con el Bearer token — por eso la propia firma, generada solo después de
+// pasar por EstudioMedicoPolicy::view al serializar el estudio, es la
+// autorización real. Antes el archivo se servía sin ningún control desde el
+// disco público y la URL, una vez conocida, quedaba accesible para siempre.
+Route::get('v1/estudios/{estudio}/archivo', [EstudioMedicoController::class, 'archivo'])
+    ->middleware('signed')
+    ->name('estudios.archivo');

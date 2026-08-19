@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\EstudioMedico;
 use App\Models\Patient;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class EstudioMedicoController extends Controller
 {
@@ -61,8 +62,13 @@ class EstudioMedicoController extends Controller
             return response()->json(['message' => 'No tiene permiso sobre este paciente.'], 403);
         }
 
+        // Disco privado a propósito: son documentos médicos (rayos X,
+        // laboratorios), no branding. Se sirven solo vía archivo() más abajo,
+        // con URL firmada de corta duración (ver
+        // EstudioMedico::getArchivoUrlAttribute) — antes iban al disco
+        // público y quedaban accesibles para siempre con solo conocer la URL.
         $file = $request->file('archivo');
-        $path = $file->store('estudios', 'public');
+        $path = $file->store('estudios', 'local');
 
         $estudio = EstudioMedico::create([
             'patient_id' => $request->patient_id,
@@ -89,6 +95,25 @@ class EstudioMedicoController extends Controller
         $this->authorize('view', $estudio);
 
         return response()->json($estudio);
+    }
+
+    /**
+     * Sirve el archivo del estudio. No lleva $this->authorize(): la ruta ya
+     * exige firma válida (middleware 'signed'), y esa firma solo se genera
+     * en EstudioMedico::getArchivoUrlAttribute después de que index()/show()
+     * pasaron por EstudioMedicoPolicy::view. Sin firma válida, el middleware
+     * corta la petición antes de llegar acá.
+     */
+    public function archivo(EstudioMedico $estudio)
+    {
+        if (!$estudio->archivo_path || !Storage::disk('local')->exists($estudio->archivo_path)) {
+            abort(404);
+        }
+
+        return Storage::disk('local')->response(
+            $estudio->archivo_path,
+            $estudio->archivo_nombre_original
+        );
     }
 
     /**

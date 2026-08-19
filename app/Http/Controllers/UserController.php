@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class UserController extends Controller
 {
@@ -16,8 +17,11 @@ class UserController extends Controller
             return response()->json(User::all());
         }
 
+        // admin_id (no created_by): un médico debe ver todas sus secretarias
+        // sin importar quién las haya creado (él mismo o el superadmin en su
+        // nombre). Ver mismo ajuste en buscarEliminado().
         return response()->json(
-            User::where('created_by', $usuario->id)->get()
+            User::where('admin_id', $usuario->id)->get()
         );
     }
 
@@ -25,8 +29,7 @@ class UserController extends Controller
      * Busca, por cédula, un usuario (médico o secretaria) eliminado (soft
      * delete). Se usa cuando la búsqueda normal (solo usuarios activos) no
      * encuentra nada, para poder consultar sus datos aunque ya no aparezca en
-     * el listado — de solo lectura, no se reactiva (ver UserPolicy::restore(),
-     * siempre false).
+     * el listado, y desde ahí reactivarlo si corresponde (ver restore()).
      */
     public function buscarEliminado(Request $request)
     {
@@ -41,8 +44,13 @@ class UserController extends Controller
 
         $query = User::onlyTrashed()->where('cedula', $documento);
 
+        // Se acota por admin_id (no created_by): esa es la relación real de
+        // pertenencia de una secretaria a su médico (ver User::secretaries()).
+        // created_by queda con el id de quien la creó, que puede ser el
+        // superadmin cuando la creó en nombre del médico, y en ese caso no
+        // coincide con el médico que después busca la cédula.
         if (!$creador->isSuperAdmin()) {
-            $query->where('created_by', $creador->id);
+            $query->where('admin_id', $creador->id);
         }
 
         $usuario = $query->first();
@@ -67,16 +75,26 @@ class UserController extends Controller
             ], 403);
         }
 
-        // Un médico (role=admin) se crea con la password genérica de
-        // DEFAULT_ADMIN_PASSWORD (ver abajo), no con una que escriba el
-        // superadmin: por eso acá no es obligatoria.
+        // Un médico (role=admin) se crea con una password aleatoria generada
+        // acá mismo (ver abajo), no con una que escriba el superadmin: por
+        // eso acá no es obligatoria. Antes se usaba un valor fijo
+        // (DEFAULT_ADMIN_PASSWORD) igual para todos los médicos nuevos y
+        // versionado en .env.example: cualquiera con acceso al repo podía
+        // adivinarla. Ahora cada médico recibe una contraseña propia e
+        // impredecible.
         $creandoMedico = $request->role === 'admin';
+        $passwordGenerica = $creandoMedico ? Str::password(12) : null;
 
         $rules = [
             'name' => 'required',
             'email' => 'required|email|unique:users',
             'password' => $creandoMedico ? 'nullable' : 'required|min:8',
-            'cedula' => 'required',
+            // Antes sin unique: una cédula repetida chocaba contra la
+            // restricción única de la tabla en el INSERT, lo que lanzaba una
+            // QueryException no controlada y Laravel volcaba el SQL completo
+            // (con el hash de la password incluido) a storage/logs/laravel.log.
+            // update() ya validaba esto correctamente, solo faltaba acá.
+            'cedula' => 'required|unique:users,cedula',
             'role' => 'required|in:superadmin,admin,secretaria',
         ];
 
@@ -105,7 +123,7 @@ class UserController extends Controller
 
             'name' => $request->name,
             'email' => $request->email,
-            'password' => Hash::make($creandoMedico ? env('DEFAULT_ADMIN_PASSWORD', 'Cambiar123') : $request->password),
+            'password' => Hash::make($creandoMedico ? $passwordGenerica : $request->password),
             'cedula' => $request->cedula,
             'role' => $request->role,
             'created_by' => auth()->id(),
@@ -122,9 +140,11 @@ class UserController extends Controller
             'message' => 'Usuario creado correctamente',
             'usuario' => $usuario,
             // Para que el superadmin pueda copiar y entregarle la contraseña
-            // genérica al médico en el momento (ver Usuarios.vue): solo va en
-            // texto plano acá, nunca se guarda así en la base de datos.
-            'password_generica' => $creandoMedico ? env('DEFAULT_ADMIN_PASSWORD', 'Cambiar123') : null
+            // generada al médico en el momento (ver Usuarios.vue): solo va en
+            // texto plano acá, nunca se guarda así en la base de datos, y es
+            // única por médico (antes era un valor fijo, ver comentario en
+            // $passwordGenerica más arriba).
+            'password_generica' => $passwordGenerica
 
         ], 201);
     }
@@ -182,6 +202,29 @@ class UserController extends Controller
 
         ]);
     }
+
+    /**
+     * Reactiva (deshace el soft delete) un usuario eliminado, encontrado
+     * antes con buscarEliminado(). Vuelve a dejarlo con status=true (activo),
+     * igual que un usuario recién creado: destroy() lo había forzado a false
+     * junto con el soft delete, así que restaurar el registro sin esto lo
+     * dejaría reactivado pero bloqueado para iniciar sesión.
+     */
+    public function restore(Request $request, int $id)
+    {
+        $usuario = User::onlyTrashed()->findOrFail($id);
+
+        $this->authorize('restore', $usuario);
+
+        $usuario->restore();
+        $usuario->update(['status' => true]);
+
+        return response()->json([
+            'message' => 'Usuario reactivado',
+            'usuario' => $usuario
+        ]);
+    }
+
 
     public function toggleStatus(Request $request, int $id)
     {

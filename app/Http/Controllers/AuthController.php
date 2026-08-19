@@ -73,7 +73,7 @@ class AuthController extends Controller
             if ($intentosRestantes > 0) {
 
                 return response()->json([
-                    "message" => "Usuario o contraseña incorrectos. Le queda " .
+                    "message" => "Usuario y/o contraseña errados. Le queda " .
                         $intentosRestantes .
                         ($intentosRestantes == 1 ? " intento." : " intentos.")
                 ], 401);

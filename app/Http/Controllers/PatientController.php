@@ -152,7 +152,8 @@ class PatientController extends Controller
 
     /**
      * Update the specified resource in storage.
-     * Médico y secretaria pueden editar, mientras el paciente sea de su tenant.
+     * Solo médico y superadmin editan (ver PatientPolicy::update()); la
+     * secretaria no.
      */
     public function update(Request $request, Patient $patient)
     {

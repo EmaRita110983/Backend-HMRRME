@@ -43,12 +43,14 @@ class BrandingController extends Controller
 
         $request->validate([
             'brand_name' => 'nullable|string|max:255',
+            'professional_title' => 'nullable|string|max:255',
             'header_credentials' => 'nullable|string|max:1000',
             'licencia_declaracion' => 'nullable|string|max:1000',
         ]);
 
         $medico->update([
             'brand_name' => $request->brand_name,
+            'professional_title' => $request->professional_title,
             'header_credentials' => $request->header_credentials,
             'licencia_declaracion' => $request->licencia_declaracion,
         ]);
@@ -164,6 +166,7 @@ class BrandingController extends Controller
     {
         return [
             'brand_name' => $tenant?->brand_name,
+            'professional_title' => $tenant?->professional_title,
             'brand_color' => $tenant?->brand_color,
             'brand_color_secondary' => $tenant?->brand_color_secondary,
             'logo_url' => $tenant?->logo_url,

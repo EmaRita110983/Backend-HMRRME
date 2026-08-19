@@ -15,10 +15,6 @@ class RoleMiddleware
      */
   public function handle(Request $request, Closure $next, ...$roles): Response
 {
-    \Log::info([
-        'roles_recibidos_array' => $roles
-    ]);
-
     $rolesPermitidos = $roles;
 
     if (!$request->user()) {

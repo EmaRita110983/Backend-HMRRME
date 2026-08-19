@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 class EstudioMedico extends Model
 {
@@ -66,8 +66,18 @@ class EstudioMedico extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    /**
+     * URL firmada válida 5 minutos, no una URL pública fija: el archivo vive
+     * en el disco privado (ver EstudioMedicoController::store/archivo) y solo
+     * se genera acá, es decir después de que quien pidió el estudio ya pasó
+     * por EstudioMedicoPolicy::view (index/show/store). Antes era una URL
+     * pública permanente, accesible para siempre por cualquiera que la
+     * obtuviera sin volver a pasar por ningún control de acceso.
+     */
     public function getArchivoUrlAttribute(): ?string
     {
-        return $this->archivo_path ? Storage::disk('public')->url($this->archivo_path) : null;
+        return $this->archivo_path
+            ? URL::temporarySignedRoute('estudios.archivo', now()->addMinutes(5), ['estudio' => $this->id])
+            : null;
     }
 }

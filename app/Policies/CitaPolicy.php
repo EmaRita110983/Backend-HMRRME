@@ -49,12 +49,13 @@ class CitaPolicy
 
     /**
      * Determine whether the user can update the model.
-     * Médico, secretaria y superadmin pueden editar (reprogramar, marcar
-     * completada/cancelada), siempre que la cita pertenezca a su tenant.
+     * Médico y superadmin pueden editar (reprogramar, marcar
+     * completada/cancelada), siempre que la cita pertenezca a su tenant. La
+     * secretaria solo ve y crea citas (create()), no las edita.
      */
     public function update(User $user, Cita $cita): bool
     {
-        return ($user->isSuperAdmin() || $user->isDoctor() || $user->isSecretary()) && $this->belongsToTenant($user, $cita);
+        return ($user->isSuperAdmin() || $user->isDoctor()) && $this->belongsToTenant($user, $cita);
     }
 
     /**

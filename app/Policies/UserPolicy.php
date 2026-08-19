@@ -11,11 +11,14 @@ class UserPolicy
     use AllowsSuperAdminDevDelete;
 
     /**
-     * Un admin (médico) solo gestiona a las secretarias que él mismo creó.
+     * Un admin (médico) solo gestiona a sus propias secretarias. Se usa
+     * admin_id (no created_by): una secretaria puede haber sido creada por
+     * el superadmin en nombre del médico, y en ese caso created_by queda con
+     * el id del superadmin, no del médico dueño real del tenant.
      */
     protected function owns(User $user, User $model): bool
     {
-        return $model->created_by === $user->id;
+        return $model->admin_id === $user->id;
     }
 
     /**
@@ -68,10 +71,17 @@ class UserPolicy
 
     /**
      * Determine whether the user can restore the model.
+     * Mismo criterio que delete(): un médico reactiva a sus propias
+     * secretarias; el superadmin no gestiona el ciclo de vida de cuentas que
+     * no le pertenecen, salvo con el flag de desarrollo.
      */
     public function restore(User $user, User $model): bool
     {
-        return false;
+        if ($user->isSuperAdmin()) {
+            return $this->superAdminDevDeleteEnabled();
+        }
+
+        return $user->isDoctor() && $this->owns($user, $model);
     }
 
     /**
