@@ -77,6 +77,7 @@ Route::middleware([
         Route::get('users/{user}', [UserController::class, 'show']);
         Route::put('users/{user}', [UserController::class, 'update']);
         Route::put('users/{user}/status', [UserController::class, 'toggleStatus']);
+        Route::put('users/{user}/reset-password', [UserController::class, 'resetPassword']);
         Route::put('users/{id}/restore', [UserController::class, 'restore']);
         Route::delete('users/{user}', [UserController::class, 'destroy']);
 

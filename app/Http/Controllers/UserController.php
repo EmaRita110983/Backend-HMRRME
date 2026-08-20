@@ -204,6 +204,34 @@ class UserController extends Controller
     }
 
     /**
+     * Restablece manualmente la contraseña de un usuario que la olvidó (no
+     * hay flujo de "olvidé mi contraseña" por email: quien la olvida avisa a
+     * su médico/superadmin, y este la resetea desde acá). Genera una nueva
+     * contraseña aleatoria (mismo criterio que al crear un médico, ver
+     * store()) y obliga a cambiarla en el próximo login. Mismo permiso que
+     * update(): el superadmin puede resetear a cualquiera, un médico solo a
+     * sus propias secretarias.
+     */
+    public function resetPassword(Request $request, int $id)
+    {
+        $usuario = User::findOrFail($id);
+
+        $this->authorize('update', $usuario);
+
+        $passwordGenerica = Str::password(12);
+
+        $usuario->password = Hash::make($passwordGenerica);
+        $usuario->must_change_password = true;
+        $usuario->save();
+
+        return response()->json([
+            'message' => 'Contraseña restablecida correctamente',
+            'usuario' => $usuario,
+            'password_generica' => $passwordGenerica,
+        ]);
+    }
+
+    /**
      * Reactiva (deshace el soft delete) un usuario eliminado, encontrado
      * antes con buscarEliminado(). Vuelve a dejarlo con status=true (activo),
      * igual que un usuario recién creado: destroy() lo había forzado a false
