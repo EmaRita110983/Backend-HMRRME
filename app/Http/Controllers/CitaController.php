@@ -66,6 +66,10 @@ class CitaController extends Controller
             return response()->json(['message' => 'No tiene permiso sobre este paciente.'], 403);
         }
 
+        if ($this->horaYaOcupada($request->fecha, $request->hora, $patient->admin_id)) {
+            return response()->json(['message' => 'Ya hay una cita pendiente a esa hora. Elige otro horario.'], 422);
+        }
+
         $cita = Cita::create([
             'patient_id' => $patient->id,
             'fecha' => $request->fecha,
@@ -100,7 +104,20 @@ class CitaController extends Controller
             'estado' => 'nullable|in:pendiente,completada,cancelada',
         ]);
 
-        $cita->update($request->only(['fecha', 'hora', 'motivo', 'estado']));
+        if ($this->horaYaOcupada($request->fecha, $request->hora, $cita->admin_id, $cita->id)) {
+            return response()->json(['message' => 'Ya hay una cita pendiente a esa hora. Elige otro horario.'], 422);
+        }
+
+        $camposPermitidos = ['fecha', 'hora', 'motivo'];
+
+        // La secretaria puede corregir hora/motivo, pero "marcar atendida"
+        // (estado) sigue siendo solo del médico/superadmin — se ignora acá
+        // aunque venga en el body, no solo se oculta en el frontend.
+        if (!$request->user()->isSecretary()) {
+            $camposPermitidos[] = 'estado';
+        }
+
+        $cita->update($request->only($camposPermitidos));
 
         return response()->json([
             'message' => 'Cita actualizada',
@@ -118,5 +135,23 @@ class CitaController extends Controller
         $cita->delete();
 
         return response()->json(['message' => 'Cita eliminada']);
+    }
+
+    /**
+     * True si el médico ya tiene una cita PENDIENTE a esa fecha+hora exacta
+     * — el frontend ya muestra un aviso con las horas ocupadas (Dashboard.vue),
+     * pero eso es solo informativo; esto es lo que realmente impide guardar
+     * dos citas a la misma hora. Cancelada/completada no cuentan: esos
+     * horarios quedaron libres o ya pasaron. $excluirCitaId es para no
+     * chocar contra sí misma al editar (ver update()).
+     */
+    private function horaYaOcupada(string $fecha, string $hora, int $adminId, ?int $excluirCitaId = null): bool
+    {
+        return Cita::where('admin_id', $adminId)
+            ->where('fecha', $fecha)
+            ->where('hora', $hora)
+            ->where('estado', 'pendiente')
+            ->when($excluirCitaId, fn ($query) => $query->where('id', '!=', $excluirCitaId))
+            ->exists();
     }
 }

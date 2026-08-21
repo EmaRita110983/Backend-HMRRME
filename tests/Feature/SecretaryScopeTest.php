@@ -10,19 +10,22 @@ use Tests\TestCase;
 
 /**
  * Regla de negocio 2: la secretaria crea y edita pacientes y citas, pero
- * nunca las borra; y no puede reprogramar/editar una cita ya creada (solo
- * el médico). Verifica CitaPolicy::update()/delete() y
- * PatientPolicy::update()/delete() sobre datos de SU PROPIO tenant (el
- * aislamiento cross-tenant ya lo cubre CrossTenantIsolationTest) — este
- * test es sobre el nivel de permiso dentro del mismo tenant, no sobre a
- * quién pertenece el dato.
+ * nunca las borra, y no puede editar un paciente ya creado (solo el
+ * médico). Para citas, sí puede corregir fecha/hora/motivo de una ya
+ * creada (para arreglar errores de carga, ver AUDITORIA.md) — pero
+ * "estado" (marcar atendida/cancelada) es una decisión clínica que se le
+ * ignora aunque lo mande, y sigue sin poder borrar citas. Verifica
+ * CitaPolicy::update()/delete() y PatientPolicy::update()/delete() sobre
+ * datos de SU PROPIO tenant (el aislamiento cross-tenant ya lo cubre
+ * CrossTenantIsolationTest) — este test es sobre el nivel de permiso
+ * dentro del mismo tenant, no sobre a quién pertenece el dato.
  */
 class SecretaryScopeTest extends TestCase
 {
     use CreatesTenantUsers;
     use RefreshDatabase;
 
-    public function test_secretary_can_create_but_not_update_or_delete_patients_and_citas(): void
+    public function test_secretary_can_create_but_not_update_or_delete_patients(): void
     {
         $doctor = $this->createDoctor();
         $secretary = $this->createSecretary($doctor);
@@ -42,6 +45,17 @@ class SecretaryScopeTest extends TestCase
 
         $this->deleteJson("/api/v1/patients/{$patient->id}")->assertStatus(403);
 
+        $this->assertDatabaseHas('patients', ['id' => $patient->id, 'deleted_at' => null]);
+    }
+
+    public function test_secretary_can_correct_a_citas_fecha_hora_y_motivo_but_not_its_estado_ni_borrarla(): void
+    {
+        $doctor = $this->createDoctor();
+        $secretary = $this->createSecretary($doctor);
+        $patient = $this->createPatientFor($doctor);
+
+        Sanctum::actingAs($secretary, ['*']);
+
         $this->postJson('/api/v1/citas', [
             'patient_id' => $patient->id,
             'fecha' => '2026-09-01',
@@ -50,14 +64,21 @@ class SecretaryScopeTest extends TestCase
 
         $cita = Cita::where('patient_id', $patient->id)->firstOrFail();
 
+        // Corrige un error de carga (hora/motivo) — esto es lo nuevo.
         $this->putJson("/api/v1/citas/{$cita->id}", [
-            'fecha' => '2026-09-02',
+            'fecha' => '2026-09-01',
             'hora' => '10:00',
-        ])->assertStatus(403);
+            'motivo' => 'Motivo corregido',
+            'estado' => 'completada', // intenta marcarla atendida igual
+        ])->assertOk();
+
+        $cita->refresh();
+        $this->assertSame('10:00:00', $cita->hora);
+        $this->assertSame('Motivo corregido', $cita->motivo);
+        // "estado" se ignora del lado del servidor aunque lo haya mandado.
+        $this->assertSame('pendiente', $cita->estado);
 
         $this->deleteJson("/api/v1/citas/{$cita->id}")->assertStatus(403);
-
-        $this->assertDatabaseHas('patients', ['id' => $patient->id, 'deleted_at' => null]);
         $this->assertDatabaseHas('citas', ['id' => $cita->id, 'deleted_at' => null]);
     }
 

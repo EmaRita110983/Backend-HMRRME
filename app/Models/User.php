@@ -10,10 +10,12 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
+use Spatie\Activitylog\Support\LogOptions;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
+    use HasApiTokens, HasFactory, LogsActivity, Notifiable, SoftDeletes;
 
     protected $fillable = [
         'name',
@@ -130,5 +132,18 @@ class User extends Authenticatable
     public function isSecretary(): bool
     {
         return $this->role === 'secretaria';
+    }
+
+    // Auditoría de cambios (ver AUDITORIA.md, "Sin auditoría de
+    // accesos/cambios"). password queda afuera a propósito: aunque solo se
+    // guarda hasheada, no hay motivo para que el hash también quede
+    // duplicado en el log de auditoría.
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logExcept(['password'])
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges();
     }
 }

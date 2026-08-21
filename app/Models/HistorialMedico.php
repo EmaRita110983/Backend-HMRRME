@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Support\LogOptions;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
 
 class HistorialMedico extends Model
 {
+    use LogsActivity;
     use SoftDeletes;
 
     protected $table = 'historial_medico';
@@ -54,5 +57,15 @@ class HistorialMedico extends Model
     public function recetas()
     {
         return $this->hasMany(Receta::class, 'historial_medico_id');
+    }
+
+    // Auditoría de cambios (ver AUDITORIA.md, "Sin auditoría de
+    // accesos/cambios").
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges();
     }
 }

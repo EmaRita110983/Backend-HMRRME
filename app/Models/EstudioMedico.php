@@ -6,9 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
+use Spatie\Activitylog\Support\LogOptions;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
 
 class EstudioMedico extends Model
 {
+    use LogsActivity;
     use SoftDeletes;
 
     // Eloquent adivina el nombre de tabla pluralizando solo la última
@@ -94,5 +97,15 @@ class EstudioMedico extends Model
         }
 
         return URL::temporarySignedRoute('estudios.archivo', now()->addMinutes(5), ['estudio' => $this->id]);
+    }
+
+    // Auditoría de cambios (ver AUDITORIA.md, "Sin auditoría de
+    // accesos/cambios").
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges();
     }
 }

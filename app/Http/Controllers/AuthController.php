@@ -98,8 +98,10 @@ class AuthController extends Controller
     // no se limita a must_change_password=true.
     public function funCambiarPassword(Request $request)
     {
+        // Mismo mínimo que UserController::store (ver comentario ahí):
+        // 12 en vez de 8, longitud por sobre complejidad forzada.
         $request->validate([
-            "password" => "required|string|min:8|confirmed",
+            "password" => "required|string|min:12|confirmed",
         ]);
 
         $user = $request->user();

@@ -136,7 +136,15 @@ class UserController extends Controller
         $rules = [
             'name' => 'required',
             'email' => 'required|email|unique:users',
-            'password' => $creandoMedico ? 'nullable' : 'required|min:8',
+            // 12, no 8: mismo mínimo que Str::password(12) más arriba, para
+            // que una secretaria que elige su propia contraseña no quede
+            // con un piso más bajo que el de una generada al azar (ver
+            // AUDITORIA.md, sección 6). Longitud, no complejidad forzada
+            // (mayúscula/símbolo/etc.) — la guía NIST SP 800-63B actual
+            // prioriza longitud + rate limiting (ya tenemos, ver funLogin)
+            // por sobre reglas de complejidad, que en la práctica solo
+            // empujan a los usuarios a patrones predecibles (Password1!).
+            'password' => $creandoMedico ? 'nullable' : 'required|min:12',
             // Antes sin unique: una cédula repetida chocaba contra la
             // restricción única de la tabla en el INSERT, lo que lanzaba una
             // QueryException no controlada y Laravel volcaba el SQL completo

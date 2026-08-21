@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Support\LogOptions;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
 
 class LicenciaMedica extends Model
 {
+    use LogsActivity;
     use SoftDeletes;
 
     protected $table = 'licencias_medicas';
@@ -47,5 +50,15 @@ class LicenciaMedica extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    // Auditoría de cambios (ver AUDITORIA.md, "Sin auditoría de
+    // accesos/cambios").
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges();
     }
 }

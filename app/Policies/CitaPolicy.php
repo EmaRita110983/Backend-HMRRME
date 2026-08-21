@@ -49,13 +49,17 @@ class CitaPolicy
 
     /**
      * Determine whether the user can update the model.
-     * Médico y superadmin pueden editar (reprogramar, marcar
-     * completada/cancelada), siempre que la cita pertenezca a su tenant. La
-     * secretaria solo ve y crea citas (create()), no las edita.
+     * Médico y superadmin pueden editar cualquier campo, incluido el estado
+     * (marcar completada/cancelada). La secretaria también puede entrar acá
+     * ahora, para corregir errores de carga (hora/motivo) — pero
+     * CitaController::update() le ignora "estado" si lo manda: marcar una
+     * cita como atendida es una decisión clínica, no un dato de agenda, y
+     * sigue siendo solo del médico/superadmin aunque ambos compartan este
+     * mismo authorize().
      */
     public function update(User $user, Cita $cita): bool
     {
-        return ($user->isSuperAdmin() || $user->isDoctor()) && $this->belongsToTenant($user, $cita);
+        return ($user->isSuperAdmin() || $user->isDoctor() || $user->isSecretary()) && $this->belongsToTenant($user, $cita);
     }
 
     /**

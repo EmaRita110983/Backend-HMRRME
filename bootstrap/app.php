@@ -18,6 +18,21 @@ return Application::configure(basePath: dirname(__DIR__))
     // AuthController::funLogin.
     $middleware->throttleApi();
 
+    // Railway/Render (y PaaS similares) terminan TLS en su propio balanceador
+    // y reenvían al contenedor por HTTP interno, agregando cabeceras
+    // X-Forwarded-*. Sin confiar en ese proxy, Laravel no detecta la request
+    // como segura ($request->secure() da false aunque el navegador sí use
+    // HTTPS) — eso rompe en silencio la cookie de sesión con
+    // SESSION_SECURE_COOKIE=true (nunca se envía) y las URLs firmadas de
+    // estudios médicos (se firman/verifican con el esquema equivocado).
+    // "*" es seguro acá específicamente porque en ese hosting el contenedor
+    // de la app no es alcanzable por nadie salvo a través de ese balanceador
+    // — no hay forma de que un cliente externo falsifique estas cabeceras
+    // directamente contra la app. En local (php artisan serve, sin proxy
+    // delante) esta config no tiene efecto real: no llegan cabeceras
+    // X-Forwarded-* de un proxy real para empezar.
+    $middleware->trustProxies(at: '*');
+
     // API pura, sin pantalla de login por sesión: por defecto, cuando una
     // petición no autenticada no manda "Accept: application/json" (ej. un
     // cliente HTTP sin ese header, no el frontend, que sí lo manda siempre
@@ -27,6 +42,11 @@ return Application::configure(basePath: dirname(__DIR__))
     $middleware->redirectGuestsTo(fn () => null);
 
     $middleware->api(prepend: [
+        // Primero de todos a propósito: ver el comentario en la propia
+        // clase para por qué el orden importa acá (que ninguna respuesta,
+        // ni siquiera un 401/403 cortado temprano por otro middleware, se
+        // quede sin estos headers).
+        \App\Http\Middleware\SecurityHeaders::class,
         \Illuminate\Http\Middleware\HandleCors::class,
         // Antes de auth:sanctum a propósito: ver el comentario en la propia
         // clase para por qué el orden importa acá.

@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Support\LogOptions;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
 
 class Patient extends Model
 {
+    use LogsActivity;
     use SoftDeletes;
 
     protected $fillable = [
@@ -57,5 +60,16 @@ class Patient extends Model
     public function citas()
     {
         return $this->hasMany(Cita::class);
+    }
+
+    // Auditoría de cambios (ver AUDITORIA.md, "Sin auditoría de
+    // accesos/cambios"): quién creó/editó/borró la ficha y qué campos
+    // cambiaron, más allá de created_by (que solo dice quién la creó).
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges();
     }
 }
