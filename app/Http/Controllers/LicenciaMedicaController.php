@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\PaginatesListings;
 use App\Http\Controllers\Concerns\ResolvesTenantPatient;
 use App\Models\LicenciaMedica;
 use Illuminate\Http\Request;
 
 class LicenciaMedicaController extends Controller
 {
+    use PaginatesListings;
     use ResolvesTenantPatient;
 
     /**
@@ -29,7 +31,7 @@ class LicenciaMedicaController extends Controller
             $query->where('patient_id', $request->patient_id);
         }
 
-        return response()->json($query->latest('fecha')->get());
+        return response()->json($this->paginateOrGet($query->latest('fecha'), $request));
     }
 
     /**

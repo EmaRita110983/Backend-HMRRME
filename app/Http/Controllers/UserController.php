@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\PaginatesListings;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -9,20 +10,46 @@ use Illuminate\Support\Str;
 
 class UserController extends Controller
 {
+    use PaginatesListings;
+
+    /**
+     * Igual que PatientController::index(): sin "q" ni "page" mantiene el
+     * comportamiento exacto de siempre (array completo). Con "page", pagina
+     * de verdad (usado por Usuarios.vue, ver AUDITORIA.md). Con "role" (sin
+     * paginar), lista liviana usada para el selector de médico al crear una
+     * secretaria en Usuarios.vue — independiente de la paginación de la
+     * tabla, para no acotar las opciones del selector a la página visible.
+     */
     public function index(Request $request)
     {
         $usuario = $request->user();
 
-        if ($usuario->role === 'superadmin') {
-            return response()->json(User::all());
-        }
-
         // admin_id (no created_by): un médico debe ver todas sus secretarias
         // sin importar quién las haya creado (él mismo o el superadmin en su
         // nombre). Ver mismo ajuste en buscarEliminado().
-        return response()->json(
-            User::where('admin_id', $usuario->id)->get()
-        );
+        $query = $usuario->role === 'superadmin'
+            ? User::query()
+            : User::where('admin_id', $usuario->id);
+
+        if ($request->filled('role')) {
+            $query->where('role', $request->query('role'));
+        }
+
+        if ($request->filled('q')) {
+            $term = $request->query('q');
+
+            $query->where(function ($sub) use ($term) {
+                $sub->where('name', 'ilike', "%{$term}%")
+                    ->orWhere('email', 'ilike', "%{$term}%")
+                    ->orWhere('cedula', 'ilike', "%{$term}%");
+            });
+        }
+
+        if ($request->filled('page')) {
+            return response()->json($query->latest()->paginate($request->integer('per_page', 15)));
+        }
+
+        return response()->json($query->get());
     }
 
     /**

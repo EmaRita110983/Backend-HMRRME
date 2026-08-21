@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\PaginatesListings;
 use App\Http\Controllers\Concerns\ResolvesTenantPatient;
 use App\Models\EstudioMedico;
 use Illuminate\Http\Request;
@@ -9,6 +10,7 @@ use Illuminate\Support\Facades\Storage;
 
 class EstudioMedicoController extends Controller
 {
+    use PaginatesListings;
     use ResolvesTenantPatient;
 
     /**
@@ -36,7 +38,7 @@ class EstudioMedicoController extends Controller
             $query->where('patient_id', $request->patient_id);
         }
 
-        return response()->json($query->latest('fecha_estudio')->get());
+        return response()->json($this->paginateOrGet($query->latest('fecha_estudio'), $request));
     }
 
     /**

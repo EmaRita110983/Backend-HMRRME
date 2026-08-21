@@ -10,13 +10,16 @@ class PatientController extends Controller
     /**
      * Display a listing of the resource.
      *
-     * Con "q" (usado hoy solo por el autocomplete de "Nueva cita" en el
-     * Dashboard, ver Dashboard.vue), busca por nombre/cédula y limita a 15
-     * resultados en vez de traer el listado completo — antes el Dashboard
-     * pedía TODOS los pacientes del tenant en cada carga solo para filtrar
-     * en el navegador, algo que no escala a medida que crece la cantidad de
-     * pacientes. Sin "q", el comportamiento es exactamente el mismo de
-     * siempre (usado por Pacientes.vue, que pagina del lado del cliente).
+     * Tres modos, todos combinables salvo el primero, para no romper a
+     * quien ya llama a este endpoint sin enterarse de los nuevos parámetros:
+     * - Sin "q" ni "page": comportamiento de siempre, array completo del
+     *   tenant (nadie más lo usa así hoy, pero se mantiene por compatibilidad).
+     * - Con "q" sin "page": autocomplete de "Nueva cita" en el Dashboard
+     *   (ver Dashboard.vue) — busca por nombre/cédula, máx. 15 resultados,
+     *   solo las columnas que necesita el selector. Sin cambios de comportamiento.
+     * - Con "page" (con o sin "q"): paginación real en la base de datos, para
+     *   Pacientes.vue — antes traía el tenant completo y paginaba en el
+     *   navegador (ver AUDITORIA.md, hallazgo "Ningún listado pagina").
      */
     public function index(Request $request)
     {
@@ -35,14 +38,22 @@ class PatientController extends Controller
         if ($request->filled('q')) {
             $term = $request->query('q');
 
-            return $query->where(function ($sub) use ($term) {
+            $query->where(function ($sub) use ($term) {
                 $sub->where('first_name', 'ilike', "%{$term}%")
                     ->orWhere('last_name', 'ilike', "%{$term}%")
-                    ->orWhere('cedula', 'ilike', "%{$term}%");
-            })
-                ->select(['id', 'admin_id', 'first_name', 'last_name', 'cedula'])
-                ->limit(15)
-                ->get();
+                    ->orWhere('cedula', 'ilike', "%{$term}%")
+                    ->orWhere('pasaporte', 'ilike', "%{$term}%");
+            });
+
+            if (!$request->filled('page')) {
+                return $query->select(['id', 'admin_id', 'first_name', 'last_name', 'cedula', 'pasaporte'])
+                    ->limit(15)
+                    ->get();
+            }
+        }
+
+        if ($request->filled('page')) {
+            return response()->json($query->latest()->paginate($request->integer('per_page', 15)));
         }
 
         return $query->get();

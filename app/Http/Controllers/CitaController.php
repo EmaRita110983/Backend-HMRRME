@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\PaginatesListings;
 use App\Models\Cita;
 use App\Models\Patient;
 use Illuminate\Http\Request;
 
 class CitaController extends Controller
 {
+    use PaginatesListings;
+
     /**
      * Filtra por tenant y, opcionalmente, por paciente/fecha/estado.
      * Usado también por el dashboard para "citas de hoy" (?fecha=YYYY-MM-DD&estado=pendiente).
@@ -38,7 +41,7 @@ class CitaController extends Controller
             $query->where('estado', $request->estado);
         }
 
-        return response()->json($query->orderBy('fecha')->orderBy('hora')->get());
+        return response()->json($this->paginateOrGet($query->orderBy('fecha')->orderBy('hora'), $request));
     }
 
     /**
