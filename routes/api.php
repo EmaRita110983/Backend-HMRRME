@@ -73,8 +73,9 @@ Route::middleware([
 
         Route::get('users', [UserController::class, 'index']);
         Route::post('users', [UserController::class, 'store']);
-        // Antes de users/{user}: si no, "eliminados" se interpretaría como un id.
+        // Antes de users/{user}: si no, "eliminados"/"stats" se interpretarían como un id.
         Route::get('users/eliminados/buscar', [UserController::class, 'buscarEliminado']);
+        Route::get('users/stats/conteo', [UserController::class, 'stats']);
         Route::get('users/{user}', [UserController::class, 'show']);
         Route::put('users/{user}', [UserController::class, 'update']);
         Route::put('users/{user}/status', [UserController::class, 'toggleStatus']);

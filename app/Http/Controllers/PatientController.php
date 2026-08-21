@@ -9,33 +9,44 @@ class PatientController extends Controller
 {
     /**
      * Display a listing of the resource.
+     *
+     * Con "q" (usado hoy solo por el autocomplete de "Nueva cita" en el
+     * Dashboard, ver Dashboard.vue), busca por nombre/cédula y limita a 15
+     * resultados en vez de traer el listado completo — antes el Dashboard
+     * pedía TODOS los pacientes del tenant en cada carga solo para filtrar
+     * en el navegador, algo que no escala a medida que crece la cantidad de
+     * pacientes. Sin "q", el comportamiento es exactamente el mismo de
+     * siempre (usado por Pacientes.vue, que pagina del lado del cliente).
      */
-   public function index(Request $request)
-{
-    $user = $request->user();
+    public function index(Request $request)
+    {
+        $user = $request->user();
 
-    if ($user->role === 'superadmin') {
+        if ($user->role === 'superadmin') {
+            $query = Patient::query();
+        } elseif ($user->role === 'admin') {
+            $query = Patient::where('admin_id', $user->id);
+        } elseif ($user->role === 'secretaria') {
+            $query = Patient::where('admin_id', $user->admin_id);
+        } else {
+            return response()->json(['message' => 'No autorizado'], 403);
+        }
 
-        return Patient::all();
+        if ($request->filled('q')) {
+            $term = $request->query('q');
 
+            return $query->where(function ($sub) use ($term) {
+                $sub->where('first_name', 'ilike', "%{$term}%")
+                    ->orWhere('last_name', 'ilike', "%{$term}%")
+                    ->orWhere('cedula', 'ilike', "%{$term}%");
+            })
+                ->select(['id', 'admin_id', 'first_name', 'last_name', 'cedula'])
+                ->limit(15)
+                ->get();
+        }
+
+        return $query->get();
     }
-
-    if ($user->role === 'admin') {
-
-        return Patient::where('admin_id', $user->id)->get();
-
-    }
-
-    if ($user->role === 'secretaria') {
-
-        return Patient::where('admin_id', $user->admin_id)->get();
-
-    }
-
-    return response()->json([
-        'message' => 'No autorizado'
-    ], 403);
-}
     /**
      * Store a newly created resource in storage.
      * Médico y secretaria pueden crear pacientes (para su propio tenant).

@@ -26,6 +26,27 @@ class UserController extends Controller
     }
 
     /**
+     * Conteos livianos para los tiles del Dashboard (ver Dashboard.vue):
+     * antes pedía el listado completo de usuarios solo para contar con
+     * .filter().length en el navegador, igual que el hallazgo de
+     * PatientController::index — un SELECT COUNT no necesita traer las filas.
+     */
+    public function stats(Request $request)
+    {
+        $usuario = $request->user();
+
+        if ($usuario->isSuperAdmin()) {
+            return response()->json([
+                'medicos' => User::where('role', 'admin')->count(),
+            ]);
+        }
+
+        return response()->json([
+            'secretarias' => User::where('admin_id', $usuario->id)->where('role', 'secretaria')->count(),
+        ]);
+    }
+
+    /**
      * Busca, por cédula, un usuario (médico o secretaria) eliminado (soft
      * delete). Se usa cuando la búsqueda normal (solo usuarios activos) no
      * encuentra nada, para poder consultar sus datos aunque ya no aparezca en
