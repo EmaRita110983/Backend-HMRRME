@@ -162,6 +162,15 @@ class UserController extends Controller
 
     public function update(Request $request, int $id)
     {
+        // authorize() antes que validate() a propósito: si no, un admin
+        // podía sondear si un email/cédula ya existe en cualquier tenant
+        // (422 si existe, 403 si no) intentando editar un usuario que ni
+        // siquiera es suyo — mismo patrón que ya usan PatientController y
+        // el resto de los controladores de historial/recetas/etc.
+        $usuario = User::findOrFail($id);
+
+        $this->authorize('update', $usuario);
+
         $request->validate([
 
             'name' => 'required',
@@ -170,11 +179,6 @@ class UserController extends Controller
             'role' => 'required|in:superadmin,admin,secretaria'
 
         ]);
-
-
-        $usuario = User::findOrFail($id);
-
-        $this->authorize('update', $usuario);
 
         if (
             $request->user()->role === 'admin' &&

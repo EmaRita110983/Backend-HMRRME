@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 
 class EstudioMedico extends Model
@@ -73,11 +74,25 @@ class EstudioMedico extends Model
      * por EstudioMedicoPolicy::view (index/show/store). Antes era una URL
      * pública permanente, accesible para siempre por cualquiera que la
      * obtuviera sin volver a pasar por ningún control de acceso.
+     *
+     * Con MEDICAL_FILES_DISK=s3 (ver config/filesystems.php: medical_disk),
+     * el archivo no vive en este servidor, así que la firma la genera S3
+     * directamente (temporaryUrl) en vez de pasar por la ruta local
+     * "estudios.archivo" — misma ventana de 5 minutos, mismo momento de
+     * generación (después de la policy), solo cambia quién firma la URL.
      */
     public function getArchivoUrlAttribute(): ?string
     {
-        return $this->archivo_path
-            ? URL::temporarySignedRoute('estudios.archivo', now()->addMinutes(5), ['estudio' => $this->id])
-            : null;
+        if (!$this->archivo_path) {
+            return null;
+        }
+
+        $disk = config('filesystems.medical_disk');
+
+        if ($disk === 's3') {
+            return Storage::disk('s3')->temporaryUrl($this->archivo_path, now()->addMinutes(5));
+        }
+
+        return URL::temporarySignedRoute('estudios.archivo', now()->addMinutes(5), ['estudio' => $this->id]);
     }
 }

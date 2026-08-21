@@ -2,6 +2,18 @@
 
 API REST en Laravel 13 (PHP 8.3) que sirve de backend a un sistema de gestión para clínicas/consultorios médicos. El frontend vive en un repo separado: `/Users/howard/Desktop/proyecto 1/sakai-vue` (Vue 3 + PrimeVue, template Sakai).
 
+## Base de datos de desarrollo
+
+**Postgres tanto en desarrollo como en producción, a propósito** (decisión explícita de Howard): evita discrepancias de tipos/sintaxis entre lo que se prueba localmente y lo que corre en producción. Se pasó primero por SQLite y luego por MySQL antes de asentarse acá — ver `AUDITORIA.md` para el historial.
+
+Corre en un contenedor Docker local (no instalado a nivel de sistema): `docker run -d --name proyecto1_postgres -e POSTGRES_DB=inv_cv_laravel -e POSTGRES_USER=laravel -e POSTGRES_PASSWORD=laravel_dev_password -p 5432:5432 postgres:16`. Las credenciales ya están en `.env` (`DB_CONNECTION=pgsql`, host `127.0.0.1:5432`, db `inv_cv_laravel`, user `laravel`). Si el contenedor no está corriendo (`docker ps`), levantar Docker Desktop (`open -a Docker`) y luego `docker start proyecto1_postgres` (el contenedor ya existe, no hace falta el `docker run` de nuevo salvo que se haya borrado).
+
+**Tests contra Postgres también** (`phpunit.xml`), no contra SQLite `:memory:` — mismo motivo: para que un test no pase en la suite y falle en real por una diferencia de comportamiento entre motores. Usan una base separada del mismo contenedor, `inv_cv_laravel_test` (creada con `CREATE DATABASE inv_cv_laravel_test`), para que `RefreshDatabase` no toque los datos de desarrollo.
+
+Nota de Postgres específica: las columnas `id` usan secuencias, no `AUTO_INCREMENT` — si alguna vez se insertan filas con `id` explícito por fuera de Eloquent (ej. un script de migración de datos), hay que resincronizar la secuencia después con `SELECT setval(pg_get_serial_sequence('tabla', 'id'), (SELECT MAX(id) FROM tabla))`, o el próximo `Model::create()` sin id explícito choca con una fila ya existente.
+
+`database/database.sqlite` y el contenedor `proyecto1_mysql` (detenido, no borrado) se conservan como backup de los datos previos a esta migración, pero ninguno de los dos es la base activa.
+
 ## Modelo de negocio (multi-tenant)
 
 Cada **médico/administrador** (`role = admin`) es un tenant. Los datos de cada tenant se aíslan por `admin_id`:

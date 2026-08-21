@@ -15,6 +15,15 @@ return [
 
     'default' => env('FILESYSTEM_DISK', 'local'),
 
+    // Disco donde se guardan los archivos de estudios médicos (ver
+    // EstudioMedicoController). Separado del disco "default" de Laravel a
+    // propósito: local sirve bien mientras haya un solo servidor, pero el
+    // día que haga falta escalar a más de uno, el disco local deja de ser
+    // compartido entre procesos — ese es el momento de pasar esta variable
+    // a "s3" sin tocar código (EstudioMedicoController/EstudioMedico ya
+    // leen de acá, con lógica distinta de URL firmada según el disco).
+    'medical_disk' => env('MEDICAL_FILES_DISK', 'local'),
+
     /*
     |--------------------------------------------------------------------------
     | Filesystem Disks

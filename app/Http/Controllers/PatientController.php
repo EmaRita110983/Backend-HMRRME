@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Patient;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 class PatientController extends Controller
 {
     /**
@@ -63,7 +64,13 @@ class PatientController extends Controller
         // El superadmin no tiene tenant propio: debe indicar a qué médico
         // pertenece el paciente que está creando.
         if ($user->isSuperAdmin()) {
-            $rules['admin_id'] = 'required|exists:users,id';
+            // Solo exists:users,id (sin filtrar por rol) dejaba crear un
+            // paciente "huérfano" si el superadmin mandaba el id de una
+            // secretaria/otro superadmin: ningún médico lo ve jamás en su
+            // listado (index() filtra por admin_id = médico dueño). Mismo
+            // criterio que ya usa UserController::store al validar a quién
+            // se le asigna una secretaria.
+            $rules['admin_id'] = ['required', Rule::exists('users', 'id')->where('role', 'admin')];
         }
 
         $request->validate($rules);

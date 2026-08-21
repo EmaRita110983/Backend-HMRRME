@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ResolvesTenantPatient;
 use App\Models\AutorizacionProcedimiento;
-use App\Models\Patient;
 use Illuminate\Http\Request;
 
 class AutorizacionProcedimientoController extends Controller
 {
+    use ResolvesTenantPatient;
+
     /**
      * Solo médico y superadmin acceden. Filtra por tenant y, opcionalmente, por paciente.
      */
@@ -49,11 +51,7 @@ class AutorizacionProcedimientoController extends Controller
         ]);
 
         $user = $request->user();
-        $patient = Patient::findOrFail($request->patient_id);
-
-        if (!$user->isSuperAdmin() && $patient->admin_id !== $user->id) {
-            return response()->json(['message' => 'No tiene permiso sobre este paciente.'], 403);
-        }
+        $patient = $this->resolveTenantPatient($request, $request->patient_id);
 
         $autorizacion = AutorizacionProcedimiento::create([
             ...$request->only([

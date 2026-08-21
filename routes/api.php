@@ -35,12 +35,13 @@ Route::prefix('v1/auth')->group(function () {
         Route::post('logout', [AuthController::class, 'funLogout']);
         Route::put('change-password', [AuthController::class, 'funCambiarPassword']);
 
-        // El frontend no usa este registro directo (los usuarios se crean
-        // desde Gestión de Usuarios, ver UserController::store): quedaba
-        // público y sin invitación, así que cualquiera sin autenticar podía
-        // crear una cuenta real en el sistema. Se restringe a Superadmin,
-        // consistente con el resto del flujo de creación de usuarios.
-        Route::middleware('role:superadmin')->post('register', [AuthController::class, 'funRegister']);
+        // funRegister/POST register se eliminó: el frontend no lo usa (los
+        // usuarios se crean desde Gestión de Usuarios, ver
+        // UserController::store) y el controlador nunca quedó alineado con
+        // ese flujo real — no asignaba role/admin_id/created_by, así que
+        // cualquier alta por acá quedaba como "secretaria fantasma" sin
+        // médico asignado (admin_id NULL), rompiendo en el primer intento
+        // de crear un paciente (patients.admin_id es NOT NULL).
 
     });
 

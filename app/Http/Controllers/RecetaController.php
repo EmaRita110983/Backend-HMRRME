@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\HistorialMedico;
-use App\Models\Patient;
+use App\Http\Controllers\Concerns\ResolvesTenantPatient;
 use App\Models\Receta;
 use Illuminate\Http\Request;
 
 class RecetaController extends Controller
 {
+    use ResolvesTenantPatient;
+
     /**
      * Solo médico y superadmin acceden. Filtra por tenant y, opcionalmente, por paciente.
      */
@@ -48,18 +49,10 @@ class RecetaController extends Controller
         ]);
 
         $user = $request->user();
-        $patient = Patient::findOrFail($request->patient_id);
-
-        if (!$user->isSuperAdmin() && $patient->admin_id !== $user->id) {
-            return response()->json(['message' => 'No tiene permiso sobre este paciente.'], 403);
-        }
+        $patient = $this->resolveTenantPatient($request, $request->patient_id);
 
         if ($request->filled('historial_medico_id')) {
-            $historial = HistorialMedico::findOrFail($request->historial_medico_id);
-
-            if ($historial->patient_id !== $patient->id) {
-                return response()->json(['message' => 'El historial indicado no pertenece a este paciente.'], 422);
-            }
+            $this->assertHistorialBelongsToPatient($request->historial_medico_id, $patient->id);
         }
 
         $receta = Receta::create([

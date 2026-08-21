@@ -11,9 +11,15 @@ return [
         '*',
     ],
 
-    'allowed_origins' => [
-        'http://localhost:5173',
-    ],
+    // En local, el hardcode a :5173 alcanza. En producción el frontend vive
+    // en otro dominio (ej. Vercel) y sin agregarlo acá el navegador bloquea
+    // toda petición desde ahí con un error de CORS, aunque el backend esté
+    // funcionando perfectamente — CORS_ALLOWED_ORIGINS permite sumar esos
+    // dominios reales por variable de entorno sin tocar código.
+    'allowed_origins' => array_values(array_filter(array_merge(
+        ['http://localhost:5173'],
+        explode(',', (string) env('CORS_ALLOWED_ORIGINS', ''))
+    ))),
 
     // Permite abrir el frontend desde otros dispositivos en la misma red local
     // (ej. celular) durante desarrollo, sin tener que hardcodear la IP de la máquina.

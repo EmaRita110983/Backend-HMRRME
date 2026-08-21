@@ -50,7 +50,12 @@ return [
     |
     */
 
-    'expiration' => null,
+    // 14 días por defecto: un token robado o filtrado (log, extensión de
+    // navegador, equipo compartido) ya no queda válido para siempre. El
+    // frontend ya maneja el 401 resultante (interceptor de axios +
+    // router.beforeEach) redirigiendo a login sin romper la sesión activa
+    // mientras el token siga vigente.
+    'expiration' => env('SANCTUM_TOKEN_EXPIRATION_MINUTES', 60 * 24 * 14),
 
     /*
     |--------------------------------------------------------------------------

@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ResolvesTenantPatient;
 use App\Models\LicenciaMedica;
-use App\Models\Patient;
 use Illuminate\Http\Request;
 
 class LicenciaMedicaController extends Controller
 {
+    use ResolvesTenantPatient;
+
     /**
      * Solo médico y superadmin acceden. Filtra por tenant y, opcionalmente, por paciente.
      */
@@ -46,11 +48,7 @@ class LicenciaMedicaController extends Controller
         ]);
 
         $user = $request->user();
-        $patient = Patient::findOrFail($request->patient_id);
-
-        if (!$user->isSuperAdmin() && $patient->admin_id !== $user->id) {
-            return response()->json(['message' => 'No tiene permiso sobre este paciente.'], 403);
-        }
+        $patient = $this->resolveTenantPatient($request, $request->patient_id);
 
         $licencia = LicenciaMedica::create([
             ...$request->only([

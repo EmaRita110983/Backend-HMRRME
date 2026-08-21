@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -12,30 +11,6 @@ use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
-    public function funRegister(Request $request)
-    {
-        // Validaciones
-        $request->validate([
-            "name" => "required|string",
-            "email" => "required|email|unique:users",
-            "password" => "required|string|min:8",
-            "cedula" => "required|string|unique:users,cedula",
-            "role" => "nullable|in:superadmin,admin,secretaria",
-        ]);
-        // Guardar en la base de datos
-        $usuario = new User();
-        $usuario->name = $request->name;
-        $usuario->email = $request->email;
-        $usuario->password = bcrypt($request->password);
-        $usuario->cedula = $request->cedula;
-        $usuario->save();
-
-        return response()->json([
-            "message" => "Usuario registrado exitosamente",
-            "user" => $usuario
-        ]);
-    }
-
     public function funLogin(Request $request)
     {
         $request->validate([
